@@ -35,11 +35,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   
   const ALL_BANDS = {
-    'FM':   { tune: 87.500,  start: 87.500,  end: 108.000, displayType: 'standard', unit: 'MHz' },
-    'OIRT': { tune: 65.900,  start: 65.900,  end: 74.000,  displayType: 'standard', unit: 'MHz' },
-    'SW':   { tune: 9.400,   displayType: 'sw_bands', unit: 'MHz' },
-    'MW':   { tune: 0.531,   start: 0.531,   end: 1.710,   displayType: 'standard', displayUnit: 'kHz' },
-    'LW':   { tune: 0.153,   start: 0.153,   end: 0.279,   displayType: 'standard', displayUnit: 'kHz' },
+    'FM':   { tune: 87.500,  start: 87.5,    end: 108.0,   displayType: 'standard', unit: 'MHz' },
+    'OIRT': { tune: 65.900,  start: 65.9,    end: 74.0,    displayType: 'standard', unit: 'MHz' },
+    'SW':   { tune: 9.400,   start: 1.8,     end: 26.1,    displayType: 'sw_bands', unit: 'MHz' },
+    'MW':   { tune: 0.531,   start: 0.520,   end: 1.710,   displayType: 'standard', displayUnit: 'kHz' },
+    'LW':   { tune: 0.153,   start: 0.150,   end: 0.283,   displayType: 'standard', displayUnit: 'kHz' },
   };
 
   const SW_BANDS = {
@@ -50,27 +50,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const ACTIVE_BANDS = {};
   ENABLED_BANDS.forEach(bandName => {
-    if (ALL_BANDS[bandName]) {
-      ACTIVE_BANDS[bandName] = ALL_BANDS[bandName];
-    }
+    if (ALL_BANDS[bandName]) ACTIVE_BANDS[bandName] = ALL_BANDS[bandName];
   });
 
-  if (Object.keys(ACTIVE_BANDS).length === 0) {
-    console.log("Band Selector Plugin: No bands enabled in configuration. Plugin will not load.");
-    return;
-  }
+  if (Object.keys(ACTIVE_BANDS).length === 0) return;
 
   const freqContainer = document.getElementById("freq-container");
-  if (!freqContainer) {
-    console.error("Band Selector Plugin: Could not find #freq-container.");
+  const dataFrequencyElement = document.getElementById('data-frequency');
+  if (!freqContainer || !dataFrequencyElement) {
+    console.error("Band Selector Plugin: Critical elements not found.");
     return;
   }
 
   const tuneToFrequency = (frequencyInMHz) => {
     if (typeof frequencyInMHz !== 'number') return;
     if (socket.readyState === WebSocket.OPEN) {
-      const formattedFrequency = Math.round(frequencyInMHz * 1000);
-      socket.send("T" + formattedFrequency);
+      socket.send("T" + Math.round(frequencyInMHz * 1000));
     } else {
       console.error("Band Selector Plugin: WebSocket connection is not open.");
     }
@@ -80,15 +75,12 @@ document.addEventListener("DOMContentLoaded", () => {
   bandSwitchWrapper.className = "band-switch-wrapper";
   const bottomDisplayContainer = document.createElement("div");
   bottomDisplayContainer.className = "band-bottom-display";
-  
   const startFreqDisplay = document.createElement("span");
   startFreqDisplay.className = "band-freq-display band-freq-start";
   startFreqDisplay.title = "Go to band start";
-
   const endFreqDisplay = document.createElement("span");
   endFreqDisplay.className = "band-freq-display band-freq-end";
   endFreqDisplay.title = "Go to band end";
-
   const swBandsContainer = document.createElement("div");
   swBandsContainer.className = "sw-bands-container";
 
@@ -96,6 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
     startFreqDisplay.style.display = 'none';
     endFreqDisplay.style.display = 'none';
     swBandsContainer.style.display = 'none';
+    if (!bandConfig) return;
 
     if (bandConfig.displayType === 'standard') {
       const start = bandConfig.start;
@@ -113,17 +106,36 @@ document.addEventListener("DOMContentLoaded", () => {
       swBandsContainer.style.display = 'flex';
     }
   };
-  
+
+  const updateActiveBandByFrequency = (freq) => {
+    let foundBandName = null;
+    
+    for (const bandName in ACTIVE_BANDS) {
+      const band = ACTIVE_BANDS[bandName];
+      if (freq >= band.start && freq <= band.end) {
+        foundBandName = bandName;
+        break;
+      }
+    }
+
+    bandSwitchWrapper.querySelectorAll('.band-switch-button').forEach(btn => {
+      if (btn.dataset.bandName === foundBandName) {
+        btn.classList.add('active-band');
+      } else {
+        btn.classList.remove('active-band');
+      }
+    });
+
+    updateBottomDisplay(ACTIVE_BANDS[foundBandName]);
+  };
+
   Object.keys(ACTIVE_BANDS).forEach((bandName) => {
     const button = document.createElement("button");
     button.className = "band-switch-button";
     button.textContent = bandName;
+    button.dataset.bandName = bandName; 
     button.addEventListener('click', () => {
-      const bandInfo = ACTIVE_BANDS[bandName];
-      bandSwitchWrapper.querySelectorAll('.band-switch-button').forEach(btn => btn.classList.remove('active-band'));
-      button.classList.add('active-band');
-      updateBottomDisplay(bandInfo);
-      tuneToFrequency(bandInfo.tune);
+      tuneToFrequency(ACTIVE_BANDS[bandName].tune);
     });
     bandSwitchWrapper.appendChild(button);
   });
@@ -164,12 +176,29 @@ document.addEventListener("DOMContentLoaded", () => {
   freqContainer.appendChild(bandSwitchWrapper);
   freqContainer.appendChild(bottomDisplayContainer);
 
-  const initialBandName = Object.keys(ACTIVE_BANDS)[0];
-  const initialBandInfo = ACTIVE_BANDS[initialBandName];
-  bandSwitchWrapper.querySelector('.band-switch-button').classList.add('active-band');
-  updateBottomDisplay(initialBandInfo);
+  const observer = new MutationObserver((mutations) => {
+    const currentFreqText = mutations[0].target.textContent;
+    const currentFreqMhz = parseFloat(currentFreqText);
+    if (!isNaN(currentFreqMhz)) {
+      updateActiveBandByFrequency(currentFreqMhz);
+    }
+  });
 
-  console.log(`Band Selector Plugin loaded with the following bands: ${Object.keys(ACTIVE_BANDS).join(', ')}`);
+  observer.observe(dataFrequencyElement, {
+    characterData: true,
+    childList: true,
+    subtree: true
+  });
+
+  const initialFreq = parseFloat(dataFrequencyElement.textContent);
+  if (!isNaN(initialFreq)) {
+    updateActiveBandByFrequency(initialFreq);
+  } else {
+    bandSwitchWrapper.querySelector('.band-switch-button').classList.add('active-band');
+    updateBottomDisplay(Object.values(ACTIVE_BANDS)[0]);
+  }
+
+  console.log(`Band Selector Plugin (v10) loaded.`);
 });
 
 })();
