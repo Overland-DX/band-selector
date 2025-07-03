@@ -88,7 +88,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     const displayStart = unit === 'kHz' ? Math.round(start * 1000) : start.toFixed(3);
     const displayEnd = unit === 'kHz' ? Math.round(end * 1000) : end.toFixed(3);
-    startFreqDisplay.textContent = `${displayStart} ${unit}`; endFreqDisplay.textContent = `${displayEnd} ${unit}`;
+    startFreqDisplay.textContent = `${displayStart} ${unit}`;
+    endFreqDisplay.textContent = `${displayEnd} ${unit}`;
     startFreqDisplay.dataset.freqMhz = start; endFreqDisplay.dataset.freqMhz = end;
     startFreqDisplay.style.display = 'inline'; endFreqDisplay.style.display = 'inline';
   };
@@ -100,7 +101,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (freq >= band.start && freq <= band.end) { activeMainBandName = bandName; break; }
     }
     mainBandsWrapper.querySelectorAll('.main-band-button').forEach(btn => btn.classList.toggle('active-band', btn.dataset.bandName === activeMainBandName));
-
     if (activeMainBandName === 'SW') {
       swBandsWrapper.style.display = 'grid';
       let activeSwBandName = null;
@@ -178,13 +178,22 @@ document.addEventListener("DOMContentLoaded", () => {
     .band-freq-display { position: absolute; bottom: 4px; z-index: 5; font-size: 12px; color: var(--color-text); opacity: 0.5; transition: opacity 0.2s ease; cursor: pointer; pointer-events: all; }
     .band-freq-start { left: 8px; }
     .band-freq-end { right: 8px; }
+
+    /* NEW: Hide plugin on mobile devices */
+    @media (max-width: 768px) {
+      .main-bands-wrapper,
+      .sw-bands-wrapper,
+      .band-bottom-display {
+        display: none !important;
+      }
+    }
   `;
   document.head.appendChild(style);
 
   bottomDisplayContainer.appendChild(startFreqDisplay); bottomDisplayContainer.appendChild(endFreqDisplay);
   freqContainer.appendChild(mainBandsWrapper); freqContainer.appendChild(swBandsWrapper);
   freqContainer.appendChild(bottomDisplayContainer);
-
+      
   const observer = new MutationObserver((mutations) => {
     const currentFreqMhz = parseFloat(mutations[0].target.textContent);
     if (!isNaN(currentFreqMhz)) { updateVisualsByFrequency(currentFreqMhz); }
@@ -194,7 +203,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const initialFreq = parseFloat(dataFrequencyElement.textContent);
   if (!isNaN(initialFreq)) { updateVisualsByFrequency(initialFreq); }
 
-  console.log(`Band Selector Plugin (v1.3) loaded.`);
+  console.log(`Band Selector Plugin (v1.4 - Mobile Friendly) loaded.`);
 });
 
 })();
