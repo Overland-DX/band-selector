@@ -6,7 +6,7 @@ Band Selector Plugin v1.5 for FM-DX-Webserver
 
 
 <br>
-![bilde](https://github.com/user-attachments/assets/facf1f5d-870a-45d0-b090-8ce3628c0c82)
+
 
 
 
