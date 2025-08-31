@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const SW_BANDS = {
     '160m': { name: '160m', tune: 1.800,  start: 1.800,  end: 2.000 }, '120m': { name: '120m', tune: 2.300,  start: 2.300,  end: 2.500 },
     '90m':  { name: '90m',  tune: 3.200,  start: 3.200,  end: 3.400 }, '75m':  { name: '75m',  tune: 3.900,  start: 3.900,  end: 4.000 },
-    '60m':  { name: '60m',  tune: 4.750,  start: 4.750,  end: 5.060 }, '49m':  { name: '49m',  tune: 6.200,  start: 5.900,  end: 6.200 },
+    '60m':  { name: '60m',  tune: 4.750,  start: 4.750,  end: 5.060 }, '49m':  { name: '49m',  tune: 5.900,  start: 5.900,  end: 6.200 },
     '41m':  { name: '41m',  tune: 7.200,  start: 7.200,  end: 7.600 }, '31m':  { name: '31m',  tune: 9.400,  start: 9.400,  end: 9.900 },
     '25m':  { name: '25m',  tune: 11.600, start: 11.600, end: 12.100 }, '22m':  { name: '22m',  tune: 13.570, start: 13.570, end: 13.870 },
     '19m':  { name: '19m',  tune: 15.100, start: 15.100, end: 15.830 }, '16m':  { name: '16m',  tune: 17.480, start: 17.480, end: 17.900 },
@@ -275,3 +275,4 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 })();
+
