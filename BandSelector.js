@@ -1,7 +1,7 @@
 // Plugin configuration, this is used in the administration when plugins are loaded
 var pluginConfig = {
     name: 'Band Selector',
-    version: '1.5',
+    version: '2.0',
     author: 'ODX',
     frontEndPath: 'BandSelector/frontend.js'
 }
@@ -12,3 +12,4 @@ var pluginConfig = {
 module.exports = {
     pluginConfig
 }
+
