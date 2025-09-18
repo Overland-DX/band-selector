@@ -1,4 +1,4 @@
-// BandSelector V2.0 – A plugin to switch bands on the FM-DX Webserver (v2.0 - Band Edge Tuning Re-enabled)
+// BandSelector V2.00.01 – A plugin to switch bands on the FM-DX Webserver (v2.00.01 - Band Edge Tuning Re-enabled)
 // -------------------------------------------------------------------------------------
 
 /* global document, socket, WebSocket */
@@ -123,8 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  const freqContentWrapper = document.createElement('div'); freqContentWrapper.className = 'freq-content-wrapper'; freqContentWrapper.appendChild(h2Freq); freqContentWrapper.appendChild(dataFrequencyElement);
-  freqContainer.appendChild(freqContentWrapper); freqContainer.appendChild(loopButton); freqContainer.appendChild(bandRangeContainer);
+  freqContainer.appendChild(loopButton); freqContainer.appendChild(bandRangeContainer);
   layoutWrapper.className = `band-selector-layout-wrapper ${rtContainer.className}`; rtContainer.className = ''; rtContainer.parentNode.replaceChild(layoutWrapper, rtContainer);
   sideButtonContainer.className = 'side-band-button-container'; layoutWrapper.appendChild(sideButtonContainer); layoutWrapper.appendChild(rtContainer);
   amBandsViewContainer.className = 'am-bands-view-container'; layoutWrapper.appendChild(amBandsViewContainer);
@@ -246,26 +245,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const style = document.createElement('style');
   style.textContent = `
-    #freq-container { position: relative !important; }
+	#freq-container { 
+		position: relative !important; 
+		display: flex !important;
+		flex-direction: column !important;
+		align-items: center !important;
+		justify-content: center !important;
+	}
+
     .band-selector-layout-wrapper { display: flex; gap: 15px; margin: 20px 10px 0 10px; background: transparent !important; padding: 0 !important; backdrop-filter: none !important; }
     .side-band-button-container { display: flex; flex-direction: column; gap: 8px; width: 60px; flex-shrink: 0; }
     .band-selector-button { height: 28px; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; background-color: var(--color-3); color: var(--color-main); cursor: pointer; transition: all 0.2s ease-in-out; }
     .band-selector-button:hover { background-color: var(--color-4); color: var(--color-main); }
-    .band-selector-button.active-band { background-color: var(--color-main-bright) !important; color: var(--color-text) !important; }
+    .band-selector-button.active-band { background-color: var(--color-main-bright) !important; color: var(--color-main) !important; }
     #rt-container, .am-bands-view-container { flex-grow: 1; min-width: 0; background-color: var(--color-1-transparent); backdrop-filter: blur(5px); border-radius: 15px; margin: 0 !important; height: auto !important; align-self: stretch; }
     .am-bands-view-container { display: grid; grid-template-columns: 85px 1fr; gap: 5px; padding: 0 5px; }
     .sw-grid-container { display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(3, 1fr); gap: 5px; height: 100%; }
     .am-view-button, .sw-grid-button { border: none; border-radius: 8px; background-color: var(--color-3); color: var(--color-main); font-weight: bold; cursor: pointer; font-size: 12px; transition: all 0.2s ease-in-out; }
     .am-view-button:hover, .sw-grid-button:hover { background-color: var(--color-4); }
-    .am-view-button.active-band, .sw-grid-button.active-band { background-color: var(--color-4) !important; color: var(--color-text) !important; }
-    .am-view-button { font-size: 14px; height: 25px; width: 60px; }
-    .freq-content-wrapper { display: flex; flex-direction: column; align-items: center; }
+    .am-view-button.active-band, .sw-grid-button.active-band { background-color: var(--color-4) !important; color: var(--color-main) !important; }
+    .am-view-button { font-size: 14px; height: 25px; width: 60px; } 
     .loop-toggle-button { position: absolute; left: 6px; bottom: 6px; z-index: 5; width: 34px; height: auto; min-height: 22px; line-height: 1.2; font-size: 11px; font-weight: bold; border: none; border-radius: 8px; background-color: var(--color-3); color: var(--color-main); cursor: pointer; padding: 2px; }
     .loop-toggle-button:hover { background-color: var(--color-main-bright); }
-    .loop-toggle-button.active { background-color: var(--color-4) !important; color: var(--color-text) !important; }
+    .loop-toggle-button.active { background-color: var(--color-4) !important; color: var(--color-main) !important; }
     #band-range-container { position: absolute; bottom: 0px; left: 50%; transform: translateX(-50%); z-index: 5; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--color-text); opacity: 0.7; }
     .band-range-part { cursor: pointer; } .band-range-part:hover { opacity: 1; text-decoration: underline; }
-.sw-bands-fieldset, .band-fieldset {
+	.sw-bands-fieldset, .band-fieldset {
         border: 1px solid var(--color-3);
         border-bottom: none;
         border-radius: 8px;
@@ -302,17 +307,28 @@ document.addEventListener("DOMContentLoaded", () => {
             box-sizing: border-box;
         }
 
-        #data-ant-container > .dropdown {
-            width: 50%;
-        }
+		#data-ant-container::before,
+		#data-ant-container::after {
+			content: '';
+			flex: 1; 
+		}
 
-        #mobile-band-selector-wrapper {
-            width: 50%;
-        }
 
-        #mobile-band-selector-wrapper:only-child {
-            width: 100%;
-        }
+		#data-ant-container > .dropdown,
+		#mobile-band-selector-wrapper {
+			width: 45% !important; 
+			flex: none !important;
+		}
+
+		#data-ant-container:has(#mobile-band-selector-wrapper:only-child)::before,
+		#data-ant-container:has(#mobile-band-selector-wrapper:only-child)::after {
+			display: none;
+		}
+
+		#mobile-band-selector-wrapper:only-child {
+			width: 50% !important;
+			margin: 0 auto;
+		}
 
         #mobile-band-selector {
             width: 100%;
@@ -342,6 +358,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let initialFreqMhz = getCurrentFrequencyInMHz();
   if (!isNaN(initialFreqMhz)) updateVisualsByFrequency(initialFreqMhz);
 
-  console.log(`Band Selector Plugin (v2.0 - Band Edge Tuning Re-enabled) loaded.`);
+  console.log(`Band Selector Plugin (v2.00.01 - Band Edge Tuning Re-enabled) loaded.`);
 });
 })();
