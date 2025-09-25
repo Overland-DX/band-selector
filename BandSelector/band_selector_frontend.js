@@ -1,4 +1,4 @@
-// BandSelector V2.02.0 – A plugin to switch bands and modify AM bandwidth options (Total Control Fix)
+// BandSelector V2.02.1 – A plugin to switch bands and modify AM bandwidth options (Total Control Fix)
 // -------------------------------------------------------------------------------------
 
 /* global document, socket, WebSocket */
@@ -664,6 +664,7 @@ const updateBandButtonStates = () => {
 
 		opacity: 0;
 		transition: opacity 0.3s ease;
+		line-height: normal; /* <-- LEGG TIL DENNE LINJEN FOR Å FIKSE TEKSTEN */
 	}
 
 	.band-selector-layout-wrapper .bs-tooltip:hover .bs-tooltiptext {
@@ -756,7 +757,6 @@ setTimeout(() => {
   updateBandButtonStates();
 }, 500);
 
-  console.log(`Band Selector v2.02.0 loaded.`);
+  console.log(`Band Selector v2.02.1 loaded.`);
 });
 })();
-
