@@ -51,7 +51,7 @@ const ENABLED_BANDS = ['FM', 'OIRT', 'SW', 'MW', 'LW'];
  * Enable/disable saving the last tuned frequency for each band to localStorage.
  * Set to false to always tune to the default frequency for a band.
  */
-const ENABLE_FREQUENCY_MEMORY = false;
+const ENABLE_FREQUENCY_MEMORY = true;
 
 // (Optional) Developer-friendly warning if someone toggles defaults without the feature:
 if (!ENABLE_AM_BW && (typeof console !== 'undefined')) {
@@ -759,3 +759,4 @@ setTimeout(() => {
   console.log(`Band Selector v2.02.0 loaded.`);
 });
 })();
+
