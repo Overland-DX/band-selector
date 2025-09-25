@@ -47,6 +47,12 @@ const DEFAULT_AM_BW_VALUE = '56000';
  */
 const ENABLED_BANDS = ['FM', 'OIRT', 'SW', 'MW', 'LW'];
 
+/**
+ * Enable/disable saving the last tuned frequency for each band to localStorage.
+ * Set to false to always tune to the default frequency for a band.
+ */
+const ENABLE_FREQUENCY_MEMORY = false;
+
 // (Optional) Developer-friendly warning if someone toggles defaults without the feature:
 if (!ENABLE_AM_BW && (typeof console !== 'undefined')) {
   if (ENABLE_DEFAULT_AM_BW) {
@@ -310,21 +316,14 @@ const addClickListener = (element) => {
         }
     }
 
-    try {
-        const lastFreqs = JSON.parse(localStorage.getItem(LAST_FREQS_STORAGE_KEY)) || {};
-        let hasSaved = false;
-        if (currentSwKey) {
-            lastFreqs[currentSwKey] = freqInMHz;
-            hasSaved = true;
-        }
-        if (currentMainKey) {
-            lastFreqs[currentMainKey] = freqInMHz;
-            hasSaved = true;
-        }
-        if (hasSaved) {
+if (ENABLE_FREQUENCY_MEMORY) {
+        try {
+            const lastFreqs = JSON.parse(localStorage.getItem(LAST_FREQS_STORAGE_KEY)) || {};
+            if (currentSwKey) { lastFreqs[currentSwKey] = freqInMHz; }
+            if (currentMainKey) { lastFreqs[currentMainKey] = freqInMHz; }
             localStorage.setItem(LAST_FREQS_STORAGE_KEY, JSON.stringify(lastFreqs));
-        }
-    } catch (e) { console.error("Could not save last frequencies:", e); }
+        } catch (e) { console.error("Could not save last frequencies:", e); }
+    }
 
 
 
@@ -423,7 +422,7 @@ const updateBandButtonStates = () => {
         const btnData = { displayName: key };
         const btn = createBandButton(key, btnData, 'band-selector-button');
         btn.addEventListener('click', () => {
-            const lastFreqs = JSON.parse(localStorage.getItem(LAST_FREQS_STORAGE_KEY)) || {};
+            const lastFreqs = ENABLE_FREQUENCY_MEMORY ? (JSON.parse(localStorage.getItem(LAST_FREQS_STORAGE_KEY)) || {}) : {};
             let targetFreq;
 
             if (isAmButton) {
@@ -467,7 +466,7 @@ const updateBandButtonStates = () => {
         btn.addEventListener('click', () => {
             fullSwTuningActive = false;
             sessionStorage.setItem(FULL_SW_MODE_KEY, 'false');
-            const lastFreqs = JSON.parse(localStorage.getItem(LAST_FREQS_STORAGE_KEY)) || {};
+            const lastFreqs = ENABLE_FREQUENCY_MEMORY ? (JSON.parse(localStorage.getItem(LAST_FREQS_STORAGE_KEY)) || {}) : {};
             const targetFreq = lastFreqs[key] || data.tune;
             tuneToFrequency(targetFreq);
             updateVisualsByFrequency(getCurrentFrequencyInMHz());
@@ -491,7 +490,7 @@ const updateBandButtonStates = () => {
     fullSwButton.addEventListener('click', () => {
         fullSwTuningActive = true;
         sessionStorage.setItem(FULL_SW_MODE_KEY, 'true');
-        const lastFreqs = JSON.parse(localStorage.getItem(LAST_FREQS_STORAGE_KEY)) || {};
+        const lastFreqs = ENABLE_FREQUENCY_MEMORY ? (JSON.parse(localStorage.getItem(LAST_FREQS_STORAGE_KEY)) || {}) : {};
         const targetFreq = lastFreqs['SW'] || ALL_BANDS['SW'].tune;
         tuneToFrequency(targetFreq);
         updateVisualsByFrequency(getCurrentFrequencyInMHz());
@@ -506,7 +505,7 @@ const updateBandButtonStates = () => {
           btn.addEventListener('click', () => {
               fullSwTuningActive = false;
               sessionStorage.setItem(FULL_SW_MODE_KEY, 'false');
-              const lastFreqs = JSON.parse(localStorage.getItem(LAST_FREQS_STORAGE_KEY)) || {};
+              const lastFreqs = ENABLE_FREQUENCY_MEMORY ? (JSON.parse(localStorage.getItem(LAST_FREQS_STORAGE_KEY)) || {}) : {};
               const targetFreq = lastFreqs[key] || data.tune;
               tuneToFrequency(targetFreq);
               updateVisualsByFrequency(getCurrentFrequencyInMHz());
@@ -643,6 +642,7 @@ const updateBandButtonStates = () => {
 		display: inline-block;
 		position: relative; 
 		cursor: pointer;
+		line-height: 0;
 	}
 
 	.band-selector-layout-wrapper .bs-tooltiptext {
