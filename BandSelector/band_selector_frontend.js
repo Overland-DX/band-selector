@@ -1,4 +1,4 @@
-// BandSelector V2.01.0 – A plugin to switch bands and modify AM bandwidth options (Total Control Fix)
+// BandSelector V2.02.0 – A plugin to switch bands and modify AM bandwidth options (Total Control Fix)
 // -------------------------------------------------------------------------------------
 
 /* global document, socket, WebSocket */
@@ -10,7 +10,7 @@
 /**
  * Enable custom AM bandwidth handling.
  * REQUIRES the ESP32-FM firmware by Sjef Verhoeven (PE5PVB).
- * If your firmware does not accept direct BW commands, set this to false.
+ * If your firmware does not accept AM BW, set this to false.
  */
 const ENABLE_AM_BW = true;
 
@@ -43,6 +43,7 @@ const DEFAULT_AM_BW_VALUE = '56000';
 /**
  * Which bands are shown in the UI.
  * Order matters for the mobile selector; items must match keys in ALL_BANDS.
+ * Default: ['FM', 'OIRT', 'SW', 'MW', 'LW'];
  */
 const ENABLED_BANDS = ['FM', 'OIRT', 'SW', 'MW', 'LW'];
 
@@ -325,6 +326,8 @@ const addClickListener = (element) => {
         }
     } catch (e) { console.error("Could not save last frequencies:", e); }
 
+
+
     const bandForDisplay = (currentMainKey === 'SW' && fullSwTuningActive)
         ? ALL_BANDS['SW']
         : (SW_BANDS[currentSwKey] || ALL_BANDS[currentMainKey]);
@@ -346,6 +349,65 @@ const addClickListener = (element) => {
         mobileBandSelector.value = currentMainKey;
     }
   };
+
+const updateBandButtonStates = () => {
+    const limitSpan = Array.from(document.querySelectorAll('.text-small, span')).find(el => el.textContent.includes('Limit:'));
+    if (!limitSpan) {
+        console.warn("[BandSelector] Fant ikke tekst-elementet for frekvensgrensen.");
+        return;
+    }
+
+    const limitText = limitSpan.textContent;
+    const matches = limitText.match(/(\d+\.?\d*)\s*MHz\s*-\s*(\d+\.?\d*)\s*MHz/);
+
+    if (!matches || matches.length < 3) {
+        console.warn("[BandSelector] Kunne ikke tolke frekvensgrensene fra teksten:", limitText);
+        return;
+    }
+
+    const lowerLimit = parseFloat(matches[1]);
+    const upperLimit = parseFloat(matches[2]);
+
+    if (isNaN(lowerLimit) || isNaN(upperLimit)) return;
+
+    const allBandData = { ...ALL_BANDS, ...SW_BANDS };
+
+    document.querySelectorAll('[data-band-key]').forEach(button => {
+        const key = button.dataset.bandKey;
+        const bandData = allBandData[key];
+
+        if (bandData) {
+            const bandStartMHz = (bandData.displayUnit === 'kHz') ? bandData.start / 1000 : bandData.start;
+            const bandEndMHz = (bandData.displayUnit === 'kHz') ? bandData.end / 1000 : bandData.end;
+            
+            const isOutside = bandEndMHz < lowerLimit || bandStartMHz > upperLimit;
+            
+            button.classList.toggle('disabled-band', isOutside);
+
+            const parent = button.parentElement;
+            const isAlreadyWrapped = parent.classList.contains('bs-tooltip'); 
+
+            if (isOutside && !isAlreadyWrapped) {
+                const tooltipWrapper = document.createElement('div');
+                tooltipWrapper.className = 'bs-tooltip'; 
+
+                const tooltipText = document.createElement('span');
+                tooltipText.className = 'bs-tooltiptext';
+                tooltipText.id = `tooltip-band-${key}`;
+                tooltipText.textContent = 'This band is outside the server tuning limit.';
+
+                button.parentNode.insertBefore(tooltipWrapper, button);
+                tooltipWrapper.appendChild(button);
+                tooltipWrapper.appendChild(tooltipText);
+
+            } else if (!isOutside && isAlreadyWrapped) {
+                const grandParent = parent.parentNode;
+                grandParent.insertBefore(button, parent);
+                grandParent.removeChild(parent);
+            }
+        }
+    });
+};
 
   freqContainer.appendChild(loopButton); freqContainer.appendChild(bandRangeContainer);
   layoutWrapper.className = `band-selector-layout-wrapper ${rtContainer.className}`; rtContainer.className = ''; rtContainer.parentNode.replaceChild(layoutWrapper, rtContainer);
@@ -564,6 +626,51 @@ const addClickListener = (element) => {
         box-sizing: border-box;
     }
 
+	.disabled-band {
+		background-color: var(--color-1) !important;
+		color: var(--color-3) !important;
+		cursor: not-allowed !important;
+		pointer-events: none;
+	}
+
+	.band-selector-layout-wrapper .tooltip {
+		display: inline-block;
+		position: relative; 
+		cursor: pointer;
+	}
+
+	.band-selector-layout-wrapper .bs-tooltip { 
+		display: inline-block;
+		position: relative; 
+		cursor: pointer;
+	}
+
+	.band-selector-layout-wrapper .bs-tooltiptext {
+		visibility: hidden; 
+		width: 180px; 
+		position: absolute;
+		background-color: var(--color-2);
+		border: 2px solid var(--color-3);
+		color: var(--color-text);
+		text-align: center;
+		font-size: 14px;
+		border-radius: 15px;
+		padding: 8px;
+		z-index: 1000;
+    
+		bottom: 110%;
+		left: 50%;
+		margin-left: -90px; 
+
+		opacity: 0;
+		transition: opacity 0.3s ease;
+	}
+
+	.band-selector-layout-wrapper .bs-tooltip:hover .bs-tooltiptext {
+		visibility: visible;
+		opacity: 1;
+	}
+
 	@media (max-width: 768px) {
         .band-selector-layout-wrapper { display: block !important; }
         .side-band-button-container, .am-bands-view-container, #band-range-container, .loop-toggle-button { display: none !important; }
@@ -628,6 +735,11 @@ const observer = new MutationObserver(() => {
   }
 });
 observer.observe(dataFrequencyElement, { characterData: true, childList: true, subtree: true });
+const limitSpanForObserver = Array.from(document.querySelectorAll('.text-small, span')).find(el => el.textContent.includes('Limit:'));
+if (limitSpanForObserver) {
+    const limitObserver = new MutationObserver(updateBandButtonStates);
+    limitObserver.observe(limitSpanForObserver, { childList: true, characterData: true, subtree: true });
+}
 setTimeout(() => {
   const initialFreqMhz = getCurrentFrequencyInMHz();
 
@@ -641,8 +753,9 @@ setTimeout(() => {
       updateBwOptionsForMode(initialFreqMhz);
     }
   }
+  updateBandButtonStates();
 }, 500);
 
-  console.log(`Band Selector v2.01.0 loaded.`);
+  console.log(`Band Selector v2.02.0 loaded.`);
 });
 })();
