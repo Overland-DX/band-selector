@@ -1,4 +1,4 @@
-// BandSelector V2.02.1 – A plugin to switch bands and modify AM bandwidth options (Total Control Fix)
+// BandSelector V2.02.2 – A plugin to switch bands and modify AM bandwidth options
 // -------------------------------------------------------------------------------------
 
 /* global document, socket, WebSocket */
@@ -287,6 +287,18 @@ const addClickListener = (element) => {
           mobileBandSelector.appendChild(option);
       }
   });
+
+  const separator = document.createElement('option');
+  separator.disabled = true;
+  separator.textContent = '──────────';
+  mobileBandSelector.appendChild(separator);
+
+  const loopOption = document.createElement('option');
+  loopOption.id = 'mobile-loop-toggle-option';
+  loopOption.value = 'toggle-loop';
+  loopOption.textContent = loopEnabled ? 'Disable Band Loop' : 'Enable Band Loop';
+  mobileBandSelector.appendChild(loopOption);
+
   mobileBandSelectorWrapper.appendChild(mobileBandSelector);
 
   const tuneToFrequency = (frequencyInMHz) => { if (socket.readyState === WebSocket.OPEN) socket.send("T" + Math.round(frequencyInMHz * 1000)); };
@@ -307,7 +319,7 @@ const addClickListener = (element) => {
     let currentMainKey = null, currentSwKey = null;
     for (const key in ALL_BANDS) { if (ENABLED_BANDS.includes(key) && freqInMHz >= ALL_BANDS[key].start && freqInMHz <= ALL_BANDS[key].end) { currentMainKey = key; break; } }
 
-    if (currentMainKey === 'SW' && !fullSwTuningActive) {
+    if (currentMainKey === 'SW') {
         for (const key in SW_BANDS) {
             if (freqInMHz >= SW_BANDS[key].start && freqInMHz <= SW_BANDS[key].end) {
                 currentSwKey = key;
@@ -316,7 +328,7 @@ const addClickListener = (element) => {
         }
     }
 
-if (ENABLE_FREQUENCY_MEMORY) {
+    if (ENABLE_FREQUENCY_MEMORY) {
         try {
             const lastFreqs = JSON.parse(localStorage.getItem(LAST_FREQS_STORAGE_KEY)) || {};
             if (currentSwKey) { lastFreqs[currentSwKey] = freqInMHz; }
@@ -324,8 +336,6 @@ if (ENABLE_FREQUENCY_MEMORY) {
             localStorage.setItem(LAST_FREQS_STORAGE_KEY, JSON.stringify(lastFreqs));
         } catch (e) { console.error("Could not save last frequencies:", e); }
     }
-
-
 
     const bandForDisplay = (currentMainKey === 'SW' && fullSwTuningActive)
         ? ALL_BANDS['SW']
@@ -344,8 +354,34 @@ if (ENABLE_FREQUENCY_MEMORY) {
     if (amBandKeys.includes(currentMainKey)) activeKeys.add('AM');
 
     document.querySelectorAll('.band-selector-button, .am-view-button, .sw-grid-button').forEach(btn => { btn.classList.toggle('active-band', activeKeys.has(btn.dataset.bandKey)); });
+    
     if (mobileBandSelector && currentMainKey) {
-        mobileBandSelector.value = currentMainKey;
+        if (document.activeElement !== mobileBandSelector) {
+            mobileBandSelector.value = currentMainKey;
+        }
+    }
+    
+    const loopOption = document.getElementById('mobile-loop-toggle-option');
+    if (loopOption) {
+        loopOption.textContent = loopEnabled ? 'Disable Band Loop' : 'Enable Band Loop';
+    }
+
+    const antContainer = document.getElementById('data-ant-container');
+    const swSelectorWrapper = document.getElementById('mobile-sw-band-selector-wrapper');
+    const mobileSwBandSelector = document.getElementById('mobile-sw-band-selector');
+
+    if (antContainer && swSelectorWrapper) {
+        if (currentMainKey === 'SW') {
+            swSelectorWrapper.style.display = 'flex';
+            antContainer.classList.add('sw-mode-active');
+        } else {
+            swSelectorWrapper.style.display = 'none';
+            antContainer.classList.remove('sw-mode-active');
+        }
+    }
+    
+    if (mobileSwBandSelector) {
+        mobileSwBandSelector.value = currentSwKey || '';
     }
   };
 
@@ -534,8 +570,65 @@ const updateBandButtonStates = () => {
 
       antContainer.appendChild(mobileBandSelectorWrapper);
 
+      const mobileSwBandSelectorWrapper = document.createElement('div');
+      mobileSwBandSelectorWrapper.id = 'mobile-sw-band-selector-wrapper';
+      mobileSwBandSelectorWrapper.style.display = 'none'; 
+
+      const mobileSwBandSelector = document.createElement('select');
+      mobileSwBandSelector.id = 'mobile-sw-band-selector';
+
+      const defaultSwOption = document.createElement('option');
+      defaultSwOption.value = "";
+      defaultSwOption.textContent = "Band";
+      mobileSwBandSelector.appendChild(defaultSwOption);
+
+      Object.keys(SW_BANDS).forEach(key => {
+          const option = document.createElement('option');
+          option.value = key;
+          option.textContent = key;
+          mobileSwBandSelector.appendChild(option);
+      });
+      mobileSwBandSelectorWrapper.appendChild(mobileSwBandSelector);
+      antContainer.appendChild(mobileSwBandSelectorWrapper);
+
+      mobileSwBandSelector.addEventListener('change', (event) => {
+          const key = event.target.value;
+          if (!key) return;
+          const data = SW_BANDS[key];
+          if (!data) return;
+
+          fullSwTuningActive = false;
+          sessionStorage.setItem(FULL_SW_MODE_KEY, 'false');
+          
+          const lastFreqs = JSON.parse(localStorage.getItem(LAST_FREQS_STORAGE_KEY)) || {};
+          const targetFreq = lastFreqs[key] || data.tune;
+          tuneToFrequency(targetFreq);
+      });
+
       mobileBandSelector.addEventListener('change', (event) => {
           const key = event.target.value;
+
+          if (key === 'toggle-loop') {
+              loopEnabled = !loopEnabled;
+              localStorage.setItem(LOOP_STORAGE_KEY, loopEnabled);
+              loopButton.classList.toggle('active', loopEnabled);
+
+              const freqMhz = getCurrentFrequencyInMHz();
+              let currentMainKey = null;
+              for (const bandKey in ALL_BANDS) {
+                  if (freqMhz >= ALL_BANDS[bandKey].start && freqMhz <= ALL_BANDS[bandKey].end) {
+                      currentMainKey = bandKey;
+                      break;
+                  }
+              }
+              if (currentMainKey) {
+                  mobileBandSelector.value = currentMainKey;
+              }
+              
+              updateVisualsByFrequency(freqMhz);
+              return;
+          }
+
           const data = ALL_BANDS[key];
           if (!data) return;
 
@@ -590,11 +683,11 @@ const updateBandButtonStates = () => {
     .sw-grid-container { display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(3, 1fr); gap: 5px; height: 100%; }
     .am-view-button, .sw-grid-button { border: none; border-radius: 8px; background-color: var(--color-3); color: var(--color-main); font-weight: bold; cursor: pointer; font-size: 12px; transition: all 0.2s ease-in-out; }
     .am-view-button:hover, .sw-grid-button:hover { background-color: var(--color-4); }
-    .am-view-button.active-band, .sw-grid-button.active-band { background-color: var(--color-4) !important; color: var(--color-main) !important; }
+    .am-view-button.active-band, .sw-grid-button.active-band { background-color: var(--color-5) !important; color: var(--color-main) !important; }
     .am-view-button { font-size: 14px; height: 22px; width: 60px; }
     .loop-toggle-button { position: absolute; left: 6px; bottom: 6px; z-index: 5; width: 34px; height: auto; min-height: 22px; line-height: 1.2; font-size: 11px; font-weight: bold; border: none; border-radius: 8px; background-color: var(--color-3); color: var(--color-main); cursor: pointer; padding: 2px; }
-    .loop-toggle-button:hover { background-color: var(--color-main-bright); }
-    .loop-toggle-button.active { background-color: var(--color-4) !important; color: var(--color-main) !important; }
+    .loop-toggle-button:hover { background-color: var(--color-4); }
+    .loop-toggle-button.active { background-color: var(--color-5) !important; color: var(--color-main) !important; }
     #band-range-container { position: absolute; bottom: 0px; left: 50%; transform: translateX(-50%); z-index: 5; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--color-text); opacity: 0.7; }
     .band-range-part { cursor: pointer; } .band-range-part:hover { opacity: 1; text-decoration: underline; }
 	.sw-bands-fieldset, .band-fieldset {
@@ -664,7 +757,7 @@ const updateBandButtonStates = () => {
 
 		opacity: 0;
 		transition: opacity 0.3s ease;
-		line-height: normal; /* <-- LEGG TIL DENNE LINJEN FOR Å FIKSE TEKSTEN */
+		line-height: normal;
 	}
 
 	.band-selector-layout-wrapper .bs-tooltip:hover .bs-tooltiptext {
@@ -681,6 +774,8 @@ const updateBandButtonStates = () => {
             padding: 0 18px 10px 18px;
             width: 100%;
             box-sizing: border-box;
+            justify-content: center;
+			align-items: baseline;
         }
 
 		#data-ant-container::before,
@@ -689,12 +784,25 @@ const updateBandButtonStates = () => {
 			flex: 1;
 		}
 
-
 		#data-ant-container > .dropdown,
-		#mobile-band-selector-wrapper {
+		#mobile-band-selector-wrapper,
+        #mobile-sw-band-selector-wrapper {
 			width: 45% !important;
-			flex: none !important;
+			flex: 0 1 auto !important;
+            transition: width 0.3s ease;
 		}
+        
+        #data-ant-container.sw-mode-active > .dropdown,
+        #data-ant-container.sw-mode-active > #mobile-band-selector-wrapper,
+        #data-ant-container.sw-mode-active > #mobile-sw-band-selector-wrapper {
+            width: 30% !important;
+        }
+        
+        #mobile-sw-band-selector-wrapper {
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
 
 		#data-ant-container:has(#mobile-band-selector-wrapper:only-child)::before,
 		#data-ant-container:has(#mobile-band-selector-wrapper:only-child)::after {
@@ -706,7 +814,8 @@ const updateBandButtonStates = () => {
 			margin: 0 auto;
 		}
 
-        #mobile-band-selector {
+        #mobile-band-selector,
+        #mobile-sw-band-selector { 
             width: 100%;
             height: 48px;
             background-color: var(--color-4);
@@ -757,6 +866,6 @@ setTimeout(() => {
   updateBandButtonStates();
 }, 500);
 
-  console.log(`Band Selector v2.02.1 loaded.`);
+  console.log(`Band Selector v2.02.2 loaded.`);
 });
 })();
