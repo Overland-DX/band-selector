@@ -12,7 +12,7 @@
  * REQUIRES the ESP32-FM firmware by Sjef Verhoeven (PE5PVB).
  * If your firmware does not accept AM BW, set this to false.
  */
-const ENABLE_AM_BW = true;
+const ENABLE_AM_BW = false;
 
 /**
  * Automatically select a default AM bandwidth when entering AM mode (< 27 MHz).
@@ -21,7 +21,7 @@ const ENABLE_AM_BW = true;
  *   - You are running the ESP32-FM firmware.
  * Set to false to keep the firmware/server’s default selection.
  */
-const ENABLE_DEFAULT_AM_BW = true;
+const ENABLE_DEFAULT_AM_BW = false;
 
 /**
  * The default AM bandwidth to select when ENABLE_DEFAULT_AM_BW is true.
@@ -869,3 +869,4 @@ setTimeout(() => {
   console.log(`Band Selector v2.02.2 loaded.`);
 });
 })();
+
