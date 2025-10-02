@@ -75,10 +75,10 @@ if (!ENABLE_AM_BW && (typeof console !== 'undefined')) {
 // END OF CONFIGURATION
 // ==========================================================================
 const FM_DX_TUNER_BW_OPTIONS = {
-  '3 kHz': 'w3000',
-  '4 kHz': 'w4000',
-  '6 kHz': 'w6000',
-  '8 kHz': 'w8000'
+  '3 kHz': 'W3000',
+  '4 kHz': 'W4000',
+  '6 kHz': 'W6000',
+  '8 kHz': 'W8000'
 };
 
 const AM_BW_MAPPING = {
@@ -963,3 +963,4 @@ setTimeout(() => {
   console.log(`Band Selector v2.02.3 loaded.`);
 });
 })();
+
