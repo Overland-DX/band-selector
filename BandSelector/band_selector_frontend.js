@@ -1,4 +1,4 @@
-// BandSelector V2.02.2 – A plugin to switch bands and modify AM bandwidth options
+// BandSelector V2.02.3 – A plugin to switch bands and modify AM bandwidth options
 // -------------------------------------------------------------------------------------
 
 /* global document, socket, WebSocket */
@@ -6,26 +6,38 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Band Selector – Configuration
 // ─────────────────────────────────────────────────────────────────────────────
-
 /**
  * Enable custom AM bandwidth handling.
- * REQUIRES the ESP32-FM firmware by Sjef Verhoeven (PE5PVB).
+ * REQUIRES the TEF6686_ESP32' firmware by Sjef Verhoeven (PE5PVB).
  * If your firmware does not accept AM BW, set this to false.
+ * Note: This feature is currently being tested. Please provide feedback on Discord.
  */
-const ENABLE_AM_BW = false;
+const ENABLE_AM_BW = true;
+
+/**
+ * Select the firmware compatibility mode.
+ * This setting is ONLY effective if ENABLE_AM_BW is set to true.
+ * It adjusts the AM bandwidth commands to match your hardware's firmware.
+ *
+ * Valid options are:
+ * - 'TEF6686_ESP32': For TEF6686 modules with Sjef Verhoeven's (PE5PVB) ESP32 firmware.
+ * - 'FM-DX-Tuner':  For Arduino modules with kkonrad's FM-DX-Tuner firmware.
+ *                    (Note: Does not currently support the 'headless tef' and 'ESP32 + tef module devices.)
+ */
+const FIRMWARE_TYPE = 'FM-DX-Tuner';
 
 /**
  * Automatically select a default AM bandwidth when entering AM mode (< 27 MHz).
  * EFFECTIVE ONLY if:
  *   - ENABLE_AM_BW === true, and
- *   - You are running the ESP32-FM firmware.
+ *   - You are running the TEF6686_ESP32' firmware.
  * Set to false to keep the firmware/server’s default selection.
  */
-const ENABLE_DEFAULT_AM_BW = false;
+const ENABLE_DEFAULT_AM_BW = true;
 
 /**
  * The default AM bandwidth to select when ENABLE_DEFAULT_AM_BW is true.
- * EFFECTIVE ONLY with ESP32-FM AND when ENABLE_AM_BW === true.
+ * EFFECTIVE ONLY with TEF6686_ESP32' AND when ENABLE_AM_BW === true.
  *
  * IMPORTANT:
  * - Must be one of the keys in AM_BW_MAPPING.
@@ -62,6 +74,13 @@ if (!ENABLE_AM_BW && (typeof console !== 'undefined')) {
 // ==========================================================================
 // END OF CONFIGURATION
 // ==========================================================================
+const FM_DX_TUNER_BW_OPTIONS = {
+  '3 kHz': 'w3000',
+  '4 kHz': 'w4000',
+  '6 kHz': 'w6000',
+  '8 kHz': 'w8000'
+};
+
 const AM_BW_MAPPING = {
   '56000': 3,  // 56 kHz → 3 kHz
   '64000': 4,  // 64 kHz → 4 kHz
@@ -95,11 +114,33 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const getCurrentFrequencyInMHz = () => { const freqText = dataFrequencyElement.textContent; let freqValue = parseFloat(freqText); if (freqText.toLowerCase().includes('khz')) { freqValue /= 1000; } return freqValue; };
 
-  const initializeBwFilter = () => {
-    const bwList = document.querySelector('#data-bw .options');
-    if (bwList) {
-        masterBwListTemplates = Array.from(bwList.querySelectorAll('li')).map(li => li.cloneNode(true));
+const initializeBwFilter = () => {
+    const desktopBwList = document.querySelector('#data-bw .options');
+    const mobileBwList = document.querySelector('#data-bw-phone .options');
+
+    if (desktopBwList) {
+        masterBwListTemplates = Array.from(desktopBwList.querySelectorAll('li')).map(li => li.cloneNode(true));
     }
+    
+    Object.entries(FM_DX_TUNER_BW_OPTIONS).forEach(([text, command]) => {
+      if (desktopBwList) {
+        const newLi = document.createElement('li');
+        newLi.textContent = text;
+        newLi.classList.add('fmdx-tuner-bw-option'); 
+        newLi.style.display = 'none'; 
+        addFmDxTunerClickListener(newLi, command);
+        desktopBwList.appendChild(newLi);
+      }
+
+      if (mobileBwList) {
+        const newLi = document.createElement('li');
+        newLi.textContent = text;
+        newLi.classList.add('fmdx-tuner-bw-option');
+        newLi.style.display = 'none';
+        newLi.addEventListener('click', () => socket.send(command));
+        mobileBwList.appendChild(newLi);
+      }
+    });
   };
   
 const getDropdownRoot = (dropdownEl) =>
@@ -128,39 +169,61 @@ if (bwRoot) {
 const updateBwOptionsForMode = (freqInMHz) => {
   if (!ENABLE_AM_BW) return;
 
-  const bwDropdown = document.getElementById('data-bw');
-  const bwList = bwDropdown?.querySelector('.options');
-  if (!bwList || masterBwListTemplates.length === 0) return;
-
   const isAmMode = freqInMHz < 27.0;
 
-  bwList.innerHTML = '';
+  // Sjekk for overgang fra AM til FM
+  const justLeftAmMode = _prevIsAmMode === true && !isAmMode;
+  if (justLeftAmMode) {
+    socket.send('W0');
+    const desktopSelectedText = document.querySelector('#data-bw .selected');
+    const mobileSelectedText = document.querySelector('#data-bw-phone .selected');
+    if (desktopSelectedText) desktopSelectedText.textContent = 'Auto';
+    if (mobileSelectedText) mobileSelectedText.textContent = 'Auto';
+  }
 
-  if (isAmMode) {
-    const amValuesToShow = new Set(['0', ...Object.keys(AM_BW_MAPPING)]);
-    masterBwListTemplates.forEach(templateLi => {
-      const value = templateLi.dataset.value;
-      if (amValuesToShow.has(value)) {
-        const newLi = templateLi.cloneNode(true);
-        if (AM_BW_MAPPING.hasOwnProperty(value)) {
-          newLi.textContent = `${AM_BW_MAPPING[value]} kHz`;
+  const allBwItems = document.querySelectorAll('#data-bw .options li, #data-bw-phone .options li');
+  if (allBwItems.length === 0) return;
+
+  const amValuesToShow = new Set(['0', ...Object.keys(AM_BW_MAPPING)]);
+
+  const getOriginalText = (value) => {
+    const template = masterBwListTemplates.find(t => t.dataset.value === value);
+    return template ? template.textContent : null;
+  };
+
+  allBwItems.forEach(li => {
+    const isTunerOption = li.classList.contains('fmdx-tuner-bw-option');
+    const value = li.dataset.value;
+
+    if (isAmMode) {
+      if (FIRMWARE_TYPE === 'FM-DX-Tuner') {
+        li.style.display = isTunerOption ? '' : 'none';
+      } else { 
+        const isRelevant = !isTunerOption && amValuesToShow.has(value);
+        li.style.display = isRelevant ? '' : 'none';
+        if (isRelevant && AM_BW_MAPPING.hasOwnProperty(value)) {
+          li.textContent = `${AM_BW_MAPPING[value]} kHz`;
         }
-        addClickListener(newLi);
-        bwList.appendChild(newLi);
       }
-    });
+    } else { 
+      li.style.display = isTunerOption ? 'none' : '';
+      
+      if (!isTunerOption && value) {
+        const originalText = getOriginalText(value);
+        if (originalText) {
+          li.textContent = originalText;
+        }
+      }
+    }
+  });
 
+  if (isAmMode && FIRMWARE_TYPE === 'TEF6686_ESP32') {
+    const desktopBwList = document.querySelector('#data-bw .options');
     const justEnteredAm = _prevIsAmMode !== true;
-    if (ENABLE_DEFAULT_AM_BW && justEnteredAm && DEFAULT_AM_BW_VALUE) {
-      const targetLi = bwList.querySelector(`li[data-value="${DEFAULT_AM_BW_VALUE}"]`);
+    if (desktopBwList && ENABLE_DEFAULT_AM_BW && justEnteredAm && DEFAULT_AM_BW_VALUE) {
+      const targetLi = desktopBwList.querySelector(`li[data-value="${DEFAULT_AM_BW_VALUE}"]`);
       if (targetLi) targetLi.click();
     }
-  } else {
-    masterBwListTemplates.forEach(templateLi => {
-      const newLi = templateLi.cloneNode(true);
-      addClickListener(newLi);
-      bwList.appendChild(newLi);
-    });
   }
 
   _prevIsAmMode = isAmMode;
@@ -238,6 +301,37 @@ const addClickListener = (element) => {
           toggler.setAttribute?.('aria-expanded', 'false');
         }
 
+        if (document.activeElement && root.contains(document.activeElement)) {
+          document.activeElement.blur();
+        }
+      } finally {
+        setTimeout(() => { root.style.pointerEvents = ''; }, 120);
+      }
+    }, 0);
+  }, { capture: true });
+};
+
+const addFmDxTunerClickListener = (element, command) => {
+  element.addEventListener('click', (ev) => {
+    ev.stopImmediatePropagation();
+    ev.preventDefault();
+    const bwDropdown = document.getElementById('data-bw');
+    if (!bwDropdown) return;
+    const root = getDropdownRoot(bwDropdown);
+    const toggler = findDropdownToggler(root);
+    socket.send(command);
+    const selectedText = root.querySelector('.selected');
+    if (selectedText) selectedText.textContent = element.textContent;
+    root.style.pointerEvents = 'none';
+    closeDropdown?.(bwDropdown);
+    setTimeout(() => {
+      try {
+        if (root.tagName === 'DETAILS') {
+          root.open = false;
+        } else if (toggler) {
+          toggler.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+          toggler.setAttribute?.('aria-expanded', 'false');
+        }
         if (document.activeElement && root.contains(document.activeElement)) {
           document.activeElement.blur();
         }
@@ -866,7 +960,6 @@ setTimeout(() => {
   updateBandButtonStates();
 }, 500);
 
-  console.log(`Band Selector v2.02.2 loaded.`);
+  console.log(`Band Selector v2.02.3 loaded.`);
 });
 })();
-
