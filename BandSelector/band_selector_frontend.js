@@ -1,4 +1,4 @@
-// BandSelector V2.02.3 – A plugin to switch bands and modify AM bandwidth options
+// BandSelector V2.03.0 – A plugin to switch bands and modify AM bandwidth options
 // -------------------------------------------------------------------------------------
 
 /* global document, socket, WebSocket */
@@ -6,6 +6,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Band Selector – Configuration
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Enable/disable the new "Tune Step" feature.
+ * If set to false, clicking the frequency display will do nothing,
+ * and tuning will always use the original system steps.
+ */
+const ENABLE_TUNE_STEP_FEATURE = true;
+
 /**
  * Enable custom AM bandwidth handling.
  * REQUIRES the TEF6686_ESP32' firmware by Sjef Verhoeven (PE5PVB).
@@ -33,7 +41,7 @@ const FIRMWARE_TYPE = 'FM-DX-Tuner';
  *   - You are running the TEF6686_ESP32' firmware.
  * Set to false to keep the firmware/server’s default selection.
  */
-const ENABLE_DEFAULT_AM_BW = true;
+const ENABLE_DEFAULT_AM_BW = false;
 
 /**
  * The default AM bandwidth to select when ENABLE_DEFAULT_AM_BW is true.
@@ -358,6 +366,85 @@ const addFmDxTunerClickListener = (element, command) => {
   const tuneUpButton = document.getElementById('freq-up');
   const tuneDownButton = document.getElementById('freq-down');
   if (!freqContainer || !dataFrequencyElement || !rtContainer || !h2Freq || !tuneUpButton || !tuneDownButton) return;
+  
+  let updateFrequencyDisplayWithMarker = () => {}; 
+
+  if (ENABLE_TUNE_STEP_FEATURE) {
+      const TUNE_STEP_CONFIG = [
+          { step: 0.001, markerIndex: -1 }, // 1 kHz
+          { step: 0.010, markerIndex: -2 }, // 10 kHz
+          { step: 0.100, markerIndex: -3 }, // 100 kHz
+          { step: 1.000, markerIndex: -5 }, // 1 MHz
+      ];
+      let currentTuneStepIndex = -1;
+
+      updateFrequencyDisplayWithMarker = () => {
+          const originalText = dataFrequencyElement.textContent;
+          if (observer) observer.disconnect();
+
+          if (currentTuneStepIndex === -1) {
+              dataFrequencyElement.innerHTML = originalText;
+          } else {
+              const config = TUNE_STEP_CONFIG[currentTuneStepIndex];
+              const textOnly = originalText.replace(/[^\d.]/g, '');
+              const chars = textOnly.split('');
+              const markerPos = chars.length + config.markerIndex;
+              let html = '';
+              for (let i = 0; i < chars.length; i++) {
+                  if (i === markerPos && chars[i] !== '.') {
+                      html += `<span class="freq-digit-marker">${chars[i]}</span>`;
+                  } else {
+                      html += `<span>${chars[i]}</span>`;
+                  }
+              }
+              dataFrequencyElement.innerHTML = html;
+          }
+          if (observer) observer.observe(dataFrequencyElement, { characterData: true, childList: true, subtree: true });
+      };
+
+      const handleCustomStepTune = (direction) => {
+          if (currentTuneStepIndex === -1) return false;
+          const currentFreq = getCurrentFrequencyInMHz();
+          if (isNaN(currentFreq)) return true;
+          const stepSize = TUNE_STEP_CONFIG[currentTuneStepIndex].step;
+          const newFreq = (direction === 'up') ? currentFreq + stepSize : currentFreq - stepSize;
+          tuneToFrequency(newFreq);
+          return true;
+      };
+
+      const tuneEventHandler = (event, direction) => {
+          if (handleCustomStepTune(direction)) {
+              event.preventDefault();
+              event.stopImmediatePropagation();
+          }
+      };
+
+      freqContainer.addEventListener('click', (e) => {
+          if (e.target.closest('.loop-toggle-button, #band-range-container')) return;
+
+          currentTuneStepIndex++;
+          
+          const freqInMHz = getCurrentFrequencyInMHz();
+          if (currentTuneStepIndex === 0 && freqInMHz >= 64.0) {
+              currentTuneStepIndex = 1;
+          }
+
+          if (currentTuneStepIndex >= TUNE_STEP_CONFIG.length) {
+              currentTuneStepIndex = -1;
+          }
+
+          updateFrequencyDisplayWithMarker();
+      });
+
+      freqContainer.addEventListener('wheel', (e) => tuneEventHandler(e, e.deltaY < 0 ? 'up' : 'down'), true);
+      tuneUpButton.addEventListener('click', (e) => tuneEventHandler(e, 'up'), true);
+      tuneDownButton.addEventListener('click', (e) => tuneEventHandler(e, 'down'), true);
+      document.addEventListener('keydown', (e) => {
+          if (e.key === 'ArrowUp' || e.key === 'ArrowRight') tuneEventHandler(e, 'up');
+          if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') tuneEventHandler(e, 'down');
+      }, true);
+  }
+
 
   const bandRangeContainer = document.createElement("div"); bandRangeContainer.id = "band-range-container"; bandRangeContainer.innerHTML = `<span class="band-range-part band-range-start"></span><span class="range-separator">↔</span><span class="band-range-part band-range-end"></span>`;
   const loopButton = document.createElement("button"); loopButton.className = 'loop-toggle-button'; loopButton.innerHTML = 'Band<br>Loop'; loopButton.title = 'Enable/disable frequency loop'; loopButton.classList.toggle('active', loopEnabled);
@@ -477,6 +564,8 @@ const addFmDxTunerClickListener = (element, command) => {
     if (mobileSwBandSelector) {
         mobileSwBandSelector.value = currentSwKey || '';
     }
+    
+    updateFrequencyDisplayWithMarker();
   };
 
 const updateBandButtonStates = () => {
@@ -759,6 +848,19 @@ const updateBandButtonStates = () => {
 
   const style = document.createElement('style');
   style.textContent = `
+    ${ENABLE_TUNE_STEP_FEATURE ? `
+    /* NY FUNKSJON: Styling for frekvensmarkør og klikkbar container */
+    #freq-container {
+        cursor: pointer;
+    }
+    .freq-digit-marker {
+        color: #00FF00; /* Lys grønn farge for markøren */
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+    /* --- Slutt på ny styling --- */
+    ` : ''}
+
 	#freq-container {
 		position: relative !important;
 		display: flex !important;
@@ -769,9 +871,29 @@ const updateBandButtonStates = () => {
 
     .band-selector-layout-wrapper { display: flex; gap: 15px; margin: 20px 10px 0 10px; background: transparent !important; padding: 0 !important; backdrop-filter: none !important; }
     .side-band-button-container { display: flex; flex-direction: column; gap: 8px; width: 60px; flex-shrink: 0; }
-    .band-selector-button { height: 28px; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; background-color: var(--color-3); color: var(--color-main); cursor: pointer; transition: all 0.2s ease-in-out; }
-    .band-selector-button:hover { background-color: var(--color-4); color: var(--color-main); }
-    .band-selector-button.active-band { background-color: var(--color-main-bright) !important; color: var(--color-main) !important; }
+.band-selector-button {
+    height: 28px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 16px;
+    /* Blander --color-4 med 40% gjennomsiktighet for å oppnå 60% opasitet */
+    background-color: color-mix(in srgb, var(--color-4) 60%, transparent);
+    color: var(--color-main);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.band-selector-button:hover {
+    background-color: var(--color-5);
+    color: var(--color-main);
+}
+
+.band-selector-button.active-band {
+    background-color: var(--color-4) !important;
+    color: var(--color-main) !important;
+}
+
     #rt-container, .am-bands-view-container { flex-grow: 1; min-width: 0; background-color: var(--color-1-transparent); backdrop-filter: blur(5px); border-radius: 15px; margin: 0 !important; height: auto !important; align-self: stretch; }
     .am-bands-view-container { display: grid; grid-template-columns: 85px 1fr; gap: 5px; padding: 0 5px; }
     .sw-grid-container { display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(3, 1fr); gap: 5px; height: 100%; }
@@ -929,38 +1051,41 @@ const updateBandButtonStates = () => {
   `;
   document.head.appendChild(style);
 
-const observer = new MutationObserver(() => {
-  const freqMhz = getCurrentFrequencyInMHz();
-  if (!isNaN(freqMhz)) {
-    updateVisualsByFrequency(freqMhz);
+  const observer = new MutationObserver(() => {
+    setTimeout(() => {
+      const freqMhz = getCurrentFrequencyInMHz();
+      if (!isNaN(freqMhz)) {
+        updateVisualsByFrequency(freqMhz);
+        if (ENABLE_AM_BW) {
+          setTimeout(() => updateBwOptionsForMode(freqMhz), 150);
+        }
+      }
+    }, 50);
+  });
+  observer.observe(dataFrequencyElement, { characterData: true, childList: true, subtree: true });
+
+  const limitSpanForObserver = Array.from(document.querySelectorAll('.text-small, span')).find(el => el.textContent.includes('Limit:'));
+  if (limitSpanForObserver) {
+      const limitObserver = new MutationObserver(updateBandButtonStates);
+      limitObserver.observe(limitSpanForObserver, { childList: true, characterData: true, subtree: true });
+  }
+
+  setTimeout(() => {
+    const initialFreqMhz = getCurrentFrequencyInMHz();
+
     if (ENABLE_AM_BW) {
-      setTimeout(() => updateBwOptionsForMode(freqMhz), 150);
+      initializeBwFilter();
     }
-  }
-});
-observer.observe(dataFrequencyElement, { characterData: true, childList: true, subtree: true });
-const limitSpanForObserver = Array.from(document.querySelectorAll('.text-small, span')).find(el => el.textContent.includes('Limit:'));
-if (limitSpanForObserver) {
-    const limitObserver = new MutationObserver(updateBandButtonStates);
-    limitObserver.observe(limitSpanForObserver, { childList: true, characterData: true, subtree: true });
-}
-setTimeout(() => {
-  const initialFreqMhz = getCurrentFrequencyInMHz();
 
-  if (ENABLE_AM_BW) {
-    initializeBwFilter();
-  }
-
-  if (!isNaN(initialFreqMhz)) {
-    updateVisualsByFrequency(initialFreqMhz);
-    if (ENABLE_AM_BW) {
-      updateBwOptionsForMode(initialFreqMhz);
+    if (!isNaN(initialFreqMhz)) {
+      updateVisualsByFrequency(initialFreqMhz);
+      if (ENABLE_AM_BW) {
+        updateBwOptionsForMode(initialFreqMhz);
+      }
     }
-  }
-  updateBandButtonStates();
-}, 500);
+    updateBandButtonStates();
+  }, 500);
 
-  console.log(`Band Selector v2.02.3 loaded.`);
+  console.log(`Band Selector v2.03.0 loaded.`);
 });
 })();
-
