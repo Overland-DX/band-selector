@@ -1,4 +1,4 @@
-// BandSelector V2.03.0 – A plugin to switch bands and modify AM bandwidth options
+// BandSelector V2.03.1 – A plugin to switch bands and modify AM bandwidth options
 // -------------------------------------------------------------------------------------
 
 /* global document, socket, WebSocket */
@@ -13,6 +13,13 @@
  * and tuning will always use the original system steps.
  */
 const ENABLE_TUNE_STEP_FEATURE = true;
+
+/**
+ * Automatically reset the tune step to default after a period of inactivity.
+ * Set to 0 to disable this feature (step will remain selected until clicked off).
+ * Any other number is the timeout in seconds.
+ */
+const TUNE_STEP_TIMEOUT_SECONDS = 20; // 0 = disabled
 
 /**
  * Enable custom AM bandwidth handling.
@@ -179,7 +186,6 @@ const updateBwOptionsForMode = (freqInMHz) => {
 
   const isAmMode = freqInMHz < 27.0;
 
-  // Sjekk for overgang fra AM til FM
   const justLeftAmMode = _prevIsAmMode === true && !isAmMode;
   if (justLeftAmMode) {
     socket.send('W0');
@@ -367,21 +373,38 @@ const addFmDxTunerClickListener = (element, command) => {
   const tuneDownButton = document.getElementById('freq-down');
   if (!freqContainer || !dataFrequencyElement || !rtContainer || !h2Freq || !tuneUpButton || !tuneDownButton) return;
   
-  let updateFrequencyDisplayWithMarker = () => {}; 
+  let updateFrequencyDisplayWithMarker = () => {};
 
   if (ENABLE_TUNE_STEP_FEATURE) {
       const TUNE_STEP_CONFIG = [
-          { step: 0.001, markerIndex: -1 }, // 1 kHz
-          { step: 0.010, markerIndex: -2 }, // 10 kHz
-          { step: 0.100, markerIndex: -3 }, // 100 kHz
-          { step: 1.000, markerIndex: -5 }, // 1 MHz
+          { step: 0.001, markerIndex: -1 },
+          { step: 0.010, markerIndex: -2 },
+          { step: 0.100, markerIndex: -3 },
+          { step: 1.000, markerIndex: -5 },
       ];
       let currentTuneStepIndex = -1;
+      let tuneStepResetTimer = null;
+      let startResetTimer = () => {};
+
+      if (TUNE_STEP_TIMEOUT_SECONDS > 0) {
+          const resetTuneStep = () => {
+              currentTuneStepIndex = -1;
+              updateFrequencyDisplayWithMarker();
+          };
+          startResetTimer = () => {
+              clearTimeout(tuneStepResetTimer);
+              if (currentTuneStepIndex !== -1) {
+                  tuneStepResetTimer = setTimeout(resetTuneStep, TUNE_STEP_TIMEOUT_SECONDS * 1000);
+              }
+          };
+          const clearResetTimer = () => clearTimeout(tuneStepResetTimer);
+          freqContainer.addEventListener('mouseenter', clearResetTimer);
+          freqContainer.addEventListener('mouseleave', startResetTimer);
+      }
 
       updateFrequencyDisplayWithMarker = () => {
           const originalText = dataFrequencyElement.textContent;
           if (observer) observer.disconnect();
-
           if (currentTuneStepIndex === -1) {
               dataFrequencyElement.innerHTML = originalText;
           } else {
@@ -409,6 +432,7 @@ const addFmDxTunerClickListener = (element, command) => {
           const stepSize = TUNE_STEP_CONFIG[currentTuneStepIndex].step;
           const newFreq = (direction === 'up') ? currentFreq + stepSize : currentFreq - stepSize;
           tuneToFrequency(newFreq);
+          startResetTimer();
           return true;
       };
 
@@ -421,19 +445,16 @@ const addFmDxTunerClickListener = (element, command) => {
 
       freqContainer.addEventListener('click', (e) => {
           if (e.target.closest('.loop-toggle-button, #band-range-container')) return;
-
           currentTuneStepIndex++;
-          
           const freqInMHz = getCurrentFrequencyInMHz();
-          if (currentTuneStepIndex === 0 && freqInMHz >= 64.0) {
+          if (currentTuneStepIndex === 0 && freqInMHz >= 65.0) {
               currentTuneStepIndex = 1;
           }
-
           if (currentTuneStepIndex >= TUNE_STEP_CONFIG.length) {
               currentTuneStepIndex = -1;
           }
-
           updateFrequencyDisplayWithMarker();
+          startResetTimer();
       });
 
       freqContainer.addEventListener('wheel', (e) => tuneEventHandler(e, e.deltaY < 0 ? 'up' : 'down'), true);
@@ -849,16 +870,14 @@ const updateBandButtonStates = () => {
   const style = document.createElement('style');
   style.textContent = `
     ${ENABLE_TUNE_STEP_FEATURE ? `
-    /* NY FUNKSJON: Styling for frekvensmarkør og klikkbar container */
     #freq-container {
         cursor: pointer;
     }
     .freq-digit-marker {
-        color: #00FF00; /* Lys grønn farge for markøren */
+        color: #00FF00;
         text-decoration: underline;
         text-underline-offset: 3px;
     }
-    /* --- Slutt på ny styling --- */
     ` : ''}
 
 	#freq-container {
@@ -891,7 +910,7 @@ const updateBandButtonStates = () => {
 
 .band-selector-button.active-band {
     background-color: var(--color-4) !important;
-    color: var(--color-main) !important;
+    color: var(--color-main);
 }
 
     #rt-container, .am-bands-view-container { flex-grow: 1; min-width: 0; background-color: var(--color-1-transparent); backdrop-filter: blur(5px); border-radius: 15px; margin: 0 !important; height: auto !important; align-self: stretch; }
@@ -1086,6 +1105,6 @@ const updateBandButtonStates = () => {
     updateBandButtonStates();
   }, 500);
 
-  console.log(`Band Selector v2.03.0 loaded.`);
+  console.log(`Band Selector v2.03.1 loaded.`);
 });
 })();
