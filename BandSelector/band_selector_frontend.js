@@ -39,6 +39,11 @@ const ENABLE_AM_BW = true;
  * Select the firmware compatibility mode.
  * This setting is ONLY effective if ENABLE_AM_BW is set to true.
  * It adjusts the AM bandwidth commands to match your hardware's firmware.
+ *
+ * Valid options are:
+ * - 'TEF6686_ESP32': For TEF6686 modules with Sjef Verhoeven's (PE5PVB) ESP32 firmware.
+ * - 'FM-DX-Tuner':  For Arduino modules with kkonrad's FM-DX-Tuner firmware.
+ *                    (Note: Does not currently support the 'headless tef' and 'ESP32 + tef 8705/8605 module devices.)
  */
 const FIRMWARE_TYPE = 'FM-DX-Tuner';
 
@@ -54,6 +59,17 @@ const ENABLE_DEFAULT_AM_BW = false;
 /**
  * The default AM bandwidth to select when ENABLE_DEFAULT_AM_BW is true.
  * EFFECTIVE ONLY with TEF6686_ESP32' AND when ENABLE_AM_BW === true.
+ *
+ * IMPORTANT:
+ * - Must be one of the keys in AM_BW_MAPPING.
+ * - Keys are in Hz (strings), matching <li data-value="..."> values.
+ *   Example mapping:
+ *     '56000' → 3 kHz
+ *     '64000' → 4 kHz
+ *     '72000' → 6 kHz
+ *     '84000' → 8 kHz
+ *
+ * Example: '56000' selects 3 kHz by default.
  */
 const DEFAULT_AM_BW_VALUE = '56000';
 
@@ -87,8 +103,10 @@ const FM_DX_TUNER_BW_OPTIONS = {
 };
 
 const AM_BW_MAPPING = {
-  '56000': 3,  '64000': 4,
-  '72000': 6,  '84000': 8
+  '56000': 3,  // 56 kHz → 3 kHz
+  '64000': 4,  // 64 kHz → 4 kHz
+  '72000': 6,  // 72 kHz → 6 kHz
+  '84000': 8   // 84 kHz → 8 kHz
 };
 
 document.addEventListener("DOMContentLoaded", () => {
