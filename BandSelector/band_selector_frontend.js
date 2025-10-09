@@ -1,4 +1,4 @@
-// BandSelector V2.04.0 – A plugin to switch bands and modify AM bandwidth options
+// BandSelector V2.04.1 – A plugin to switch bands and modify AM bandwidth options
 // -------------------------------------------------------------------------------------
 
 /* global document, socket, WebSocket */
@@ -121,7 +121,8 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   
   if (ENABLE_USA_TUNING_MODE) {
-    ALL_BANDS['MW'] = { name: 'MW', tune: 1.000, start: 0.530, end: 1.700, displayUnit: 'kHz' };
+    ALL_BANDS['MW'] = { name: 'MW', tune: 0.530, start: 0.530, end: 1.700, displayUnit: 'kHz' };
+	 ALL_BANDS['FM'].end = 107.9;
   }
 
   const SW_BANDS = {
@@ -485,6 +486,26 @@ const addFmDxTunerClickListener = (element, command) => {
       };
       
       tuneEventHandler = (event, direction) => {
+          if (loopEnabled && activeBandForLooping) {
+              const currentFreq = getCurrentFrequencyInMHz();
+              const tolerance = 0.0001;
+              let looped = false;
+
+              if (direction === 'up' && currentFreq >= activeBandForLooping.end - tolerance) {
+                  tuneToFrequency(activeBandForLooping.start);
+                  looped = true;
+              } else if (direction === 'down' && currentFreq <= activeBandForLooping.start + tolerance) {
+                  tuneToFrequency(activeBandForLooping.end);
+                  looped = true;
+              }
+
+              if (looped) {
+                  event.preventDefault();
+                  event.stopImmediatePropagation();
+                  return;
+              }
+          }
+
           if (handleCustomStepTune(direction)) {
               event.preventDefault();
               event.stopImmediatePropagation();
@@ -493,7 +514,10 @@ const addFmDxTunerClickListener = (element, command) => {
           
           if (ENABLE_USA_TUNING_MODE) {
               const currentFreq = getCurrentFrequencyInMHz();
-              if (currentFreq >= ALL_BANDS['FM'].start || currentFreq < ALL_BANDS['OIRT'].start) {
+              const isFmBand = currentFreq >= ALL_BANDS['FM'].start;
+              const isMwBand = currentFreq >= ALL_BANDS['MW'].start && currentFreq <= ALL_BANDS['MW'].end;
+
+              if (isFmBand || isMwBand) {
                   handleUsaDefaultStepTune(direction);
                   event.preventDefault();
                   event.stopImmediatePropagation();
@@ -558,7 +582,6 @@ const addFmDxTunerClickListener = (element, command) => {
     return button;
   };
 
-  const handleTuneAttempt = (direction, event) => { if (!loopEnabled || !activeBandForLooping) return; const currentFreq = getCurrentFrequencyInMHz(); if (isNaN(currentFreq)) return; const tolerance = 0.0001; let shouldWrap = false; if (direction === 'up' && currentFreq >= activeBandForLooping.end - tolerance) { tuneToFrequency(activeBandForLooping.start); shouldWrap = true; } else if (direction === 'down' && currentFreq <= activeBandForLooping.start + tolerance) { tuneToFrequency(activeBandForLooping.end); shouldWrap = true; } if (shouldWrap && event) { event.preventDefault(); event.stopPropagation(); } };
 
   const updateVisualsByFrequency = (freqInMHz) => {
     let currentMainKey = null, currentSwKey = null;
@@ -872,9 +895,7 @@ const addFmDxTunerClickListener = (element, command) => {
       });
   }
 
-  document.addEventListener('keydown', (event) => { let direction = null; if (event.key === 'ArrowRight' || event.key === 'ArrowUp') direction = 'up'; else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') direction = 'down'; if (direction) handleTuneAttempt(direction, event); }, true);
-  tuneUpButton.addEventListener('click', (event) => handleTuneAttempt('up', event), true);
-  tuneDownButton.addEventListener('click', (event) => handleTuneAttempt('down', event), true);
+
 
   bandRangeContainer.querySelector('.band-range-start').addEventListener('click', () => { if (activeBandForLooping) tuneToFrequency(activeBandForLooping.start); });
   bandRangeContainer.querySelector('.band-range-end').addEventListener('click', () => { if (activeBandForLooping) tuneToFrequency(activeBandForLooping.end); });
@@ -1111,6 +1132,6 @@ const addFmDxTunerClickListener = (element, command) => {
     updateBandButtonStates();
   }, 500);
 
-  console.log(`Band Selector v2.04.0 loaded.`);
+  console.log(`Band Selector v2.04.1 loaded.`);
 });
 })();
