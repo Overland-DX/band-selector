@@ -1079,7 +1079,7 @@ const updateBandButtonStates = () => {
           setTimeout(() => updateBwOptionsForMode(freqMhz), 150);
         }
       }
-    }, 50);
+    }, 0);
   });
   observer.observe(dataFrequencyElement, { characterData: true, childList: true, subtree: true });
 
