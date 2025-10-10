@@ -12,7 +12,7 @@
  * 'modern': Side panel layout with a dedicated AM/SW view.
  * 'classic': Compact layout with buttons inside the frequency panel (v1 style).
  */
-const LAYOUT_STYLE = 'classic'; // 'modern' or 'classic'
+const LAYOUT_STYLE = 'modern'; // 'modern' or 'classic'
 
 /**
  * Show/hide all new UI elements (side buttons, AM view, etc.).
@@ -980,4 +980,5 @@ const addFmDxTunerClickListener = (element, command) => {
 
   console.log(`Band Selector v2.05.0 loaded.`);
 });
+
 })();
