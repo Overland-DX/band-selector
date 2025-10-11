@@ -1,5 +1,5 @@
 # band-selector
-Band Selector Plugin v2.0 for FM-DX-Webserver
+Enhanced Tuning Plugin v2.6 for FM-DX-Webserver
 <br>
 
 A small plugin for FM-DX-Webserver which allows you to quickly change bands.
