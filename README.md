@@ -14,7 +14,7 @@ Enhanced Tuning Plugin v2.6 for FM-DX-Webserver
 
  - USA tuning steps for the FM (200kHz) and MW (10kHz) bands.
 
- - Highly customizable. You can choose between two layouts and configure what is displayed in the config file.
+ - You can choose between two layouts and configure what is displayed in the config file.
 
 <br>
     
