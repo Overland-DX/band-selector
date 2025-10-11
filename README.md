@@ -5,15 +5,15 @@ Enhanced Tuning Plugin v2.6 for FM-DX-Webserver
 
 A plugin for FM-DX-Webserver that enhances the user's tuning experience.
 
-    Band buttons to make it easier to navigate across a wide frequency range.
+ - Band buttons to make it easier to navigate across a wide frequency range.
 
-    Adjustable tune step for both fine and coarse tuning. (FM: 10 kHz, 100 kHz and 1 Mhz. AM: 1 kHz, 10 kHz, 100 kHz and 1 mHz)
+ - Adjustable tune step for both fine and coarse tuning. (FM: 10 kHz, 100 kHz and 1 Mhz. AM: 1 kHz, 10 kHz, 100 kHz and 1 mHz)
 
-    AM bandwidth control to improve the DX experience.*
+ - AM bandwidth control to improve the DX experience.*
 
-    USA tuning steps for the FM (200kHz) and MW (10kHz) bands.
+ - USA tuning steps for the FM (200kHz) and MW (10kHz) bands.
 
-    Highly customizable. You can choose between two layouts and configure what is displayed in the config file.
+ - Highly customizable. You can choose between two layouts and configure what is displayed in the config file.
 
 <br>
 * AM mode bandwidth control only works with the TEF6686_ESP32 firmware by Sjef Verhoeven, for example on portable units. For the FM-DX-Tuner firmware by Konrad, it only works with units using the 6686 (F8602) TEF chip. For use with 6686 (F8605) and 6687 (F8705), such as the HeadLess TEF, a small modification to the firmware is required.
@@ -53,13 +53,13 @@ With the Modern layout:
 <br><br>
 How to Install:
 
-    Download the plugin and place it in the web server's plugin folder.
+ 1. Download the plugin and place it in the web server's plugin folder.
 
-    Restart the server and activate the plugin in the admin panel.
+ 2. Restart the server and activate the plugin in the admin panel.
 
-    Restart the server again.
+ 3. Restart the server again.
 
-    If you want to customize the plugin, go to: plugins\Enhanced_Tuning\public\config.js
+ 4. If you want to customize the plugin, go to: plugins\Enhanced_Tuning\public\config.js
     Set your preferences and save.
 
     
