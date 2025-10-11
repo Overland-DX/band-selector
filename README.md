@@ -7,19 +7,22 @@ A plugin for FM-DX-Webserver that enhances the user's tuning experience.
 
  - Band buttons to make it easier to navigate across a wide frequency range.
 
- - Adjustable tune step for both fine and coarse tuning. (FM: 10 kHz, 100 kHz and 1 Mhz. AM: 1 kHz, 10 kHz, 100 kHz and 1 mHz)
+ - Adjustable tune step for both fine and coarse tuning. (FM: 10 kHz, 100 kHz and 1 MHz. AM: 1 kHz, 10 kHz, 100 kHz and 1 MHz)
 
- - AM bandwidth control to improve the DX experience.*
+ - AM bandwidth control to improve the DX experience. (3kHz, 4kHz, 6kHz, 8kHz) *
 
  - USA tuning steps for the FM (200kHz) and MW (10kHz) bands.
 
  - Highly customizable. You can choose between two layouts and configure what is displayed in the config file.
 
 <br>
-* AM mode bandwidth control only works with the TEF6686_ESP32 firmware by Sjef Verhoeven, for example on portable units. For the FM-DX-Tuner firmware by Konrad, it only works with units using the 6686 (F8602) TEF chip. For use with 6686 (F8605) and 6687 (F8705), such as the HeadLess TEF, a small modification to the firmware is required.
+    
+**AM mode bandwidth control only works with the TEF6686_ESP32 firmware by Sjef Verhoeven, for example on portable units.<br>For the FM-DX-Tuner firmware by Konrad, it only works with units using the 6686 (F8602) TEF chip. For use with 6686 (F8605) and 6687 (F8705), such as the HeadLess TEF, a small modification to the firmware is required.*
+
+  
 
 ---
-With the Classic layout:
+*With the Classic layout:*
 <br>
 <img width="794" height="368" alt="bilde" src="https://github.com/user-attachments/assets/2fbb5904-ecc2-4fff-bd95-f3214c165008" />
 <br>
@@ -34,7 +37,7 @@ With the Classic layout:
 <img width="792" height="369" alt="bilde" src="https://github.com/user-attachments/assets/a42aebd0-9858-43f6-a201-37670d2c41c0" />
 
 ---
-With the Modern layout:
+*With the Modern layout:*
 <br>
 <img width="785" height="375" alt="bilde" src="https://github.com/user-attachments/assets/a59462ea-7253-498b-a511-751f1ca7e4ec" />
 <br>
