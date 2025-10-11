@@ -1,4 +1,4 @@
-# band-selector
+# Enhanced Tuning
 Enhanced Tuning Plugin v2.6 for FM-DX-Webserver
 <br>
 
