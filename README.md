@@ -2,8 +2,9 @@
 
 Enhanced Tuning Plugin v2.6 for FM-DX-Webserver
 <br>
-
-A plugin for FM-DX-Webserver that enhances the user's tuning experience.
+<br>
+*A plugin for FM-DX-Webserver that enhances the user's tuning experience.*
+<br><br>
 
  - Band buttons to make it easier to navigate across a wide frequency range.
 
@@ -17,7 +18,7 @@ A plugin for FM-DX-Webserver that enhances the user's tuning experience.
 
 <br>
     
-**AM mode bandwidth control only works with the TEF6686_ESP32 firmware by Sjef Verhoeven, for example on portable units.<br>For the FM-DX-Tuner firmware by Konrad, it only works with units using the 6686 (F8602) TEF chip. For use with 6686 (F8605) and 6687 (F8705), such as the HeadLess TEF, a small modification to the firmware is required.*
+>**AM mode bandwidth control only works with the TEF6686_ESP32 firmware by Sjef Verhoeven, for example on portable units.<br>For the FM-DX-Tuner firmware by Konrad, it only works with units using the 6686 (F8602) TEF >chip. For use with 6686 (F8605) and 6687 (F8705), such as the HeadLess TEF, a small modification to the firmware is required.*
 
   
 
@@ -68,8 +69,8 @@ How to Install:
     
 
 <br><br>
-For those updating from Band Selector, it is recommended to deactivate the old plugin and delete its files before installing Enhanced Tuning.
+***For those updating from Band Selector, it is recommended to deactivate the old plugin and delete its files before installing Enhanced Tuning.***
 
-<br><br>
+<br><br><br>
 
 
