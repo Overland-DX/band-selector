@@ -18,7 +18,7 @@ Enhanced Tuning Plugin v2.6 for FM-DX-Webserver
 
 <br>
     
->**AM mode bandwidth control only works with the TEF6686_ESP32 firmware by Sjef Verhoeven, for example on portable units.<br>For the FM-DX-Tuner firmware by Konrad, it only works with units using the 6686 (F8602) TEF >chip. For use with 6686 (F8605) and 6687 (F8705), such as the HeadLess TEF, a small modification to the firmware is required.*
+>**AM mode bandwidth works with all of the TEF6686_ESP32 firmware by Sjef Verhoeven, for example on portable units.<br>For the FM-DX-Tuner firmware by Konrad, it only works with units using the 6686 (F8602) TEF >chip. For use with 6686 (F8605) and 6687 (F8705), such as the HeadLess TEF, a small modification to the firmware is required.*
 
   
 
