@@ -54,6 +54,12 @@ If you feel you have the skills to flash your own Headless TEF, I have created a
 
 
 ---
+*With no buttons*
+<br>
+<img width="796" height="381" alt="bilde" src="https://github.com/user-attachments/assets/5bcc235a-024c-44aa-a99f-f971ff7453b2" />
+<br>
+
+---
 
 
 
