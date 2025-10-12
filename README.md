@@ -21,7 +21,9 @@ Enhanced Tuning Plugin v2.6 for FM-DX-Webserver
 >**AM mode bandwidth works with all of the TEF6686_ESP32 firmware by Sjef Verhoeven, for example on portable units.<br>For the FM-DX-Tuner firmware by Konrad, it only works with units using the 6686 (F8602) TEF chip. For use with 6686 (F8605) and 6687 (F8705), such as the HeadLess TEF, a small modification to the firmware is required.*
 
 <br>
-If you feel you have the skills to flash your own Headless TEF, I have created a guide on how I did it [here](https://github.com/Overland-DX/Enhanced-Tuning/wiki/Flash-Headless-TEF-with-FM%E2%80%90DX%E2%80%90Tuner%E2%80%90Modded.bin).  
+If you feel you have the skills to flash your own Headless TEF, I have created a guide on how I did it 
+
+[Flash Headless TEF with FM‐DX‐Tuner‐Modded.bin](https://github.com/Overland-DX/Enhanced-Tuning/wiki/Flash-Headless-TEF-with-FM%E2%80%90DX%E2%80%90Tuner%E2%80%90Modded.bin)
 
 ---
 *With the Classic layout:*
