@@ -72,7 +72,7 @@ How to Install:
 
  3. Restart the server again.
 
- 4. If you want to customize the plugin, go to: plugins\Enhanced_Tuning\public\config.js
+ 4. If you want to customize the plugin, go to: plugins\EnhancedTuning\public\config.ini
     Set your preferences and save.
 
     
@@ -81,7 +81,7 @@ How to Install:
 ***For those updating from Band Selector, it is recommended to deactivate the old plugin and delete its files before installing Enhanced Tuning.***
 
 <br><br><br>
-Default values ​​in config.js:
+Default values ​​in config.ini:
 <br><br>
 ```
 // ==========================================================================
