@@ -6,8 +6,7 @@
 'use strict';
 
 const path = require('path');
-const express = require('express'); 
-const { logInfo } = require('../../server/console');
+const express = require('express');
 const endpointsRouter = require('../../server/endpoints');
 
 endpointsRouter.use(

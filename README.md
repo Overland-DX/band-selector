@@ -95,11 +95,13 @@ Default values ​​in config.js:
  */
 const LAYOUT_STYLE = 'modern'; // 'modern' or 'classic'
 
+
 /**
  * Show/hide all new UI elements (side buttons, AM view, etc.).
  * Only effective if LAYOUT_STYLE is 'modern'.
  */
 const HIDE_ALL_BUTTONS = false;
+
 
 /**
  * Show/hide the "Band Loop" button.
@@ -107,10 +109,19 @@ const HIDE_ALL_BUTTONS = false;
  */
 const SHOW_LOOP_BUTTON = true;
 
+
 /**
  * Show/hide the start ↔ end frequency range display under the main frequency.
  */
 const SHOW_BAND_RANGE = true;
+
+
+/**
+ * Enable a button to toggle between 9kHz and 10kHz steps on the MW band.
+ * The button only appears when the MW band is active.
+ */
+const ENABLE_MW_STEP_TOGGLE = true;
+
 
 /**
  * Enable/disable the new "Tune Step" feature.
@@ -119,6 +130,7 @@ const SHOW_BAND_RANGE = true;
  */
 const ENABLE_TUNE_STEP_FEATURE = true;
 
+
 /**
  * Automatically reset the tune step to default after a period of inactivity.
  * Set to 0 to disable this feature (step will remain selected until clicked off).
@@ -126,11 +138,18 @@ const ENABLE_TUNE_STEP_FEATURE = true;
  */
 const TUNE_STEP_TIMEOUT_SECONDS = 20; // 0 = disabled
 
+
 /**
- * Enable USA tuning mode (10kHz AM steps, 200kHz odd-decimal FM steps).
- * This replaces the default tuning step when the custom step feature is not active.
+ * Define the regional tuning standard for frequency bands and steps.
+ * This single setting controls AM/FM steps and frequency ranges.
+ * 
+ * Options:
+ * 'international': Standard for Europe, Africa, Asia, Australia (9kHz AM, 100kHz FM).
+ * 'americas':    Standard for North/South America (10kHz AM, 200kHz odd-step FM).
+ * 'japan':       Standard for Japan (9kHz AM, 100kHz FM, 76-95 MHz band).
  */
-const ENABLE_USA_TUNING_MODE = false;
+const TUNING_STANDARD = 'international';
+
 
 /**
  * Enable custom AM bandwidth handling.
@@ -139,6 +158,7 @@ const ENABLE_USA_TUNING_MODE = false;
  * Note: This feature is currently being tested. Please provide feedback on Discord.
  */
 const ENABLE_AM_BW = true;
+
 
 /**
  * Select the firmware compatibility mode.
@@ -152,6 +172,7 @@ const ENABLE_AM_BW = true;
  */
 const FIRMWARE_TYPE = 'FM-DX-Tuner';
 
+
 /**
  * Automatically select a default AM bandwidth when entering AM mode (< 27 MHz).
  * EFFECTIVE ONLY if:
@@ -161,11 +182,13 @@ const FIRMWARE_TYPE = 'FM-DX-Tuner';
  */
 const ENABLE_DEFAULT_AM_BW = false;
 
+
 /**
  * The default AM bandwidth to select when ENABLE_DEFAULT_AM_BW is true.
  * EFFECTIVE ONLY with TEF6686_ESP32' AND when ENABLE_AM_BW === true.
  */
 const DEFAULT_AM_BW_VALUE = '56000';
+
 
 /**
  * Which bands are shown in the UI.
@@ -174,8 +197,10 @@ const DEFAULT_AM_BW_VALUE = '56000';
  */
 const ENABLED_BANDS = ['FM', 'OIRT', 'SW', 'MW', 'LW'];
 
+
 /**
  * Enable/disable saving the last tuned frequency for each band to localStorage.
  * Set to false to always tune to the default frequency for a band.
+ * Only effective if LAYOUT_STYLE is 'modern'.
  */
-const ENABLE_FREQUENCY_MEMORY = true;
+const ENABLE_FREQUENCY_MEMORY = false;

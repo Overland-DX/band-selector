@@ -20,6 +20,38 @@ body.tune-step-enabled .freq-digit-marker {
     pointer-events: none;
 }
 
+/* MW 9 kHz/10 kHz button */
+#mw-step-toggle-button {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  z-index: 11;
+  display: none;
+  max-width: 50px; 
+  text-align: center;
+  height: auto;
+  padding: 1px 6px;
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 1.4;
+  color: var(--color-main);
+  background-color: var(--color-4);
+  border: 1px solid var(--color-2);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.2s ease, background-color 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+#mw-step-toggle-button:hover {
+  background-color: var(--color-5);
+  transform: translateY(-1px);
+}
+
+#mw-step-toggle-button.active {
+  opacity: 1;
+  border-color: var(--color-4);
+}
+
 
 /* ========================================================================== */
 /* B: MODERN LAYOUT */
@@ -67,7 +99,7 @@ body.layout-modern.modern-buttons-visible .band-selector-button:hover {
 }
 body.layout-modern.modern-buttons-visible .side-band-button-container .band-selector-button.active-band {
     background-color: var(--color-4);
-    color: var(--color-text);
+    color: var(--color-main);
 }
 body.layout-modern.modern-buttons-visible #rt-container,
 body.layout-modern.modern-buttons-visible .am-bands-view-container {
@@ -111,7 +143,7 @@ body.layout-modern.modern-buttons-visible .sw-grid-button:hover {
 body.layout-modern.modern-buttons-visible .am-bands-view-container .am-view-button.active-band,
 body.layout-modern.modern-buttons-visible .am-bands-view-container .sw-grid-button.active-band {
     background-color: var(--color-5);
-    color: var(--color-text);
+    color: var(--color-main);
 }
 body.layout-modern.modern-buttons-visible .am-view-button {
     font-size: 14px;
@@ -203,7 +235,7 @@ body.layout-modern.loop-button-visible .loop-toggle-button:hover {
 }
 body.layout-modern.loop-button-visible .loop-toggle-button.active {
     background-color: var(--color-5) !important;
-    color: var(--color-text);
+    color: var(--color-main);
 }
 body.layout-modern.band-range-visible #band-range-container {
     position: absolute;
@@ -232,9 +264,11 @@ body.layout-modern.band-range-visible .band-range-part:hover {
         display: block !important;
     }
     body.layout-modern.modern-buttons-visible .side-band-button-container,
-    body.layout-modern.modern-buttons-visible .am-bands-view-container,
-    body.layout-modern.modern-buttons-visible #band-range-container,
-    body.layout-modern.modern-buttons-visible .loop-toggle-button {
+    body.layout-modern.modern-buttons-visible .am-bands-view-container {
+        display: none !important;
+    }
+    body.layout-modern #band-range-container,
+    body.layout-modern .loop-toggle-button {
         display: none !important;
     }
     body.layout-modern.modern-buttons-visible #data-ant-container {
@@ -337,7 +371,7 @@ body.layout-classic .main-band-button.active-band,
 body.layout-classic .sw-band-button.active-band,
 body.layout-classic #loop-toggle-button.active {
     background-color: var(--color-4);
-    color: #fff;
+    color: var(--color-main);
     opacity: 1;
 }
 body.layout-classic .sw-bands-container {
@@ -389,7 +423,7 @@ body.layout-classic .range-separator {
     pointer-events: none;
 }
 body.layout-classic #data-ant-container.classic-mobile-controls {
-    display: none; /* Hide on desktop for classic layout */
+    display: none;
 }
 
 /* C2: Mobile view for Classic Layout */

@@ -1,10 +1,9 @@
-// Enhanced Tuning V2.06.0 – A plugin to switch bands and modify AM bandwidth options
+// Enhanced Tuning V2.06.1 – A plugin to switch bands and modify AM bandwidth options
 // -------------------------------------------------------------------------------------
 // Settings have been moved to /public/config.js
 // -------------------------------------------------------------------------------------
 
-
-/* global document, socket, WebSocket, LAYOUT_STYLE, HIDE_ALL_BUTTONS, SHOW_LOOP_BUTTON, SHOW_BAND_RANGE, ENABLE_TUNE_STEP_FEATURE, TUNE_STEP_TIMEOUT_SECONDS, ENABLE_USA_TUNING_MODE, ENABLE_AM_BW, FIRMWARE_TYPE, ENABLE_DEFAULT_AM_BW, DEFAULT_AM_BW_VALUE, ENABLED_BANDS, ENABLE_FREQUENCY_MEMORY */
+/* global document, socket, WebSocket, LAYOUT_STYLE, HIDE_ALL_BUTTONS, SHOW_LOOP_BUTTON, SHOW_BAND_RANGE, ENABLE_TUNE_STEP_FEATURE, TUNE_STEP_TIMEOUT_SECONDS, TUNING_STANDARD, ENABLE_AM_BW, FIRMWARE_TYPE, ENABLE_DEFAULT_AM_BW, DEFAULT_AM_BW_VALUE, ENABLED_BANDS, ENABLE_FREQUENCY_MEMORY, ENABLE_MW_STEP_TOGGLE */
 (() => {
 
   const loadScript = (src) => {
@@ -18,8 +17,20 @@
     });
   };
 
+  const loadPluginStylesheet = () => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.type = 'text/css';
+    link.href = '/public/Enhanced_Tuning.css';
+    document.head.appendChild(link);
+    
+    return new Promise((resolve, reject) => {
+      link.onload = () => resolve();
+      link.onerror = () => reject(new Error('Stylesheet load error for Enhanced_Tuning.css'));
+    });
+  };
+
   const initializePlugin = () => {
-    // (Optional) Developer-friendly warning if someone toggles defaults without the feature:
     if (!ENABLE_AM_BW && (typeof console !== 'undefined')) {
       if (ENABLE_DEFAULT_AM_BW) {
         console.warn('[BandSelector] ENABLE_DEFAULT_AM_BW is set but ENABLE_AM_BW is false; default BW selection will be ignored.');
@@ -43,6 +54,7 @@
     if (typeof socket === 'undefined' || socket === null) return;
 
     const ALL_BANDS = {
+      'AM_SUPER': { name: 'AM Super', start: 0.144, end: 27.0, displayUnit: 'MHz' },
       'FM':   { name: 'FM',   tune: 87.500,  start: 87.5,    end: 108.0,   displayUnit: 'MHz' },
       'OIRT': { name: 'OIRT', tune: 65.900,  start: 65.9,    end: 74.0,    displayUnit: 'MHz' },
       'SW':   { name: 'SW',   tune: 9.400,   start: 1.710,   end: 27.0,    displayUnit: 'MHz' },
@@ -50,9 +62,14 @@
       'LW':   { name: 'LW',   tune: 0.144,   start: 0.144,   end: 0.351,   displayUnit: 'kHz' },
     };
     
-    if (ENABLE_USA_TUNING_MODE) {
-      ALL_BANDS['MW'] = { name: 'MW', tune: 0.530, start: 0.530, end: 1.700, displayUnit: 'kHz' };
-      ALL_BANDS['FM'].end = 107.9;
+    switch (typeof TUNING_STANDARD !== 'undefined' ? TUNING_STANDARD.toLowerCase() : 'international') {
+      case 'americas':
+        ALL_BANDS['MW'] = { name: 'MW', tune: 0.530, start: 0.530, end: 1.700, displayUnit: 'kHz' };
+        ALL_BANDS['FM'] = { name: 'FM', tune: 87.500, start: 87.5, end: 107.9, displayUnit: 'MHz' };
+        break;
+      case 'japan':
+        ALL_BANDS['FM'] = { name: 'FM', tune: 76.000, start: 76.0, end: 95.0, displayUnit: 'MHz' };
+        break;
     }
 
     const SW_BANDS = {
@@ -323,7 +340,9 @@
     let tuneEventHandler = () => {};
     let handleCustomStepTune = () => false;
 
-    if (ENABLE_TUNE_STEP_FEATURE || ENABLE_USA_TUNING_MODE) {
+    const tuneToFrequency = (frequencyInMHz) => { if (socket.readyState === WebSocket.OPEN) socket.send("T" + Math.round(frequencyInMHz * 1000)); };
+
+    if (ENABLE_TUNE_STEP_FEATURE || (typeof TUNING_STANDARD !== 'undefined' && TUNING_STANDARD === 'americas')) {
         if (ENABLE_TUNE_STEP_FEATURE) {
             const TUNE_STEP_CONFIG = [
                 { step: 0.001, markerIndex: -1 }, { step: 0.010, markerIndex: -2 },
@@ -376,7 +395,7 @@
             };
 
             freqContainer.addEventListener('click', (e) => {
-                if (e.target.closest('.loop-toggle-button, #band-range-container, .band-selector-button')) return;
+                if (e.target.closest('#mw-step-toggle-button, .loop-toggle-button, #band-range-container, .band-selector-button')) return;
 				e.preventDefault();
 				e.stopImmediatePropagation();
                 currentTuneStepIndex++;
@@ -387,29 +406,28 @@
                 startResetTimer();
             });
         }
-
-        const tuneToFrequency = (frequencyInMHz) => { if (socket.readyState === WebSocket.OPEN) socket.send("T" + Math.round(frequencyInMHz * 1000)); };
-
-        const handleUsaDefaultStepTune = (direction) => {
+        
+        const handleAmericasDefaultStepTune = (direction) => {
             const currentFreq = getCurrentFrequencyInMHz();
             if (isNaN(currentFreq)) return;
             let newFreq;
-            if (currentFreq >= ALL_BANDS['FM'].start) {
+            if (currentFreq >= ALL_BANDS['FM'].start && currentFreq <= ALL_BANDS['FM'].end) {
                 const step = 0.2;
-                let baseFreq = Math.floor(currentFreq / step) * step;
+                newFreq = parseFloat(currentFreq.toFixed(1)); 
                 if (direction === 'up') {
-                    baseFreq += step;
+                    newFreq += step;
                 } else {
-                    if (Math.abs(currentFreq - (baseFreq + 0.1)) > 0.001) {} 
-                    else { baseFreq -= step; }
+                    newFreq -= step;
                 }
-                newFreq = Math.round(baseFreq * 10) / 10 + 0.1;
+                if (Math.round(newFreq * 10) % 2 === 0) {
+                   newFreq -= 0.1;
+                }
             } else {
                 const step = 0.010;
                 const directionMultiplier = (direction === 'up' ? 1 : -1);
                 newFreq = Math.round((currentFreq + (step * directionMultiplier)) / step) * step;
             }
-            tuneToFrequency(newFreq);
+            tuneToFrequency(newFreq.toFixed(3));
         };
         
         tuneEventHandler = (event, direction) => {
@@ -437,12 +455,12 @@
                 return;
             }
             
-            if (ENABLE_USA_TUNING_MODE) {
+            if (TUNING_STANDARD === 'americas') {
                 const currentFreq = getCurrentFrequencyInMHz();
-                const isFmBand = currentFreq >= ALL_BANDS['FM'].start;
+                const isFmBand = currentFreq >= ALL_BANDS['FM'].start && currentFreq <= ALL_BANDS['FM'].end;
                 const isMwBand = currentFreq >= ALL_BANDS['MW'].start && currentFreq <= ALL_BANDS['MW'].end;
                 if (isFmBand || isMwBand) {
-                    handleUsaDefaultStepTune(direction);
+                    handleAmericasDefaultStepTune(direction);
                     event.preventDefault();
                     event.stopImmediatePropagation();
                 }
@@ -458,23 +476,17 @@
         }, true);
     }
     
-    const tuneToFrequency = (frequencyInMHz) => { if (socket.readyState === WebSocket.OPEN) socket.send("T" + Math.round(frequencyInMHz * 1000)); };
-    
     let updateVisualsByFrequency;
 
     const updateBandButtonStates = () => {
         const limitSpan = Array.from(document.querySelectorAll('.text-small, span')).find(el => el.textContent.includes('Limit:'));
-        if (!limitSpan) {
-            return;
-        }
+        if (!limitSpan) return;
 
         const limitText = limitSpan.textContent;
         const matches = limitText.match(/(\d+\.?\d*)\s*MHz\s*-\s*(\d+\.?\d*)\s*MHz/);
 
         if (!matches || matches.length < 3) {
-            document.querySelectorAll('[data-band-key]').forEach(button => {
-                button.classList.add('disabled-band');
-            });
+            document.querySelectorAll('[data-band-key]').forEach(button => button.classList.add('disabled-band'));
             return;
         }
 
@@ -492,9 +504,7 @@
             if (bandData) {
                 const bandStartMHz = (bandData.displayUnit === 'kHz') ? bandData.start / 1000 : bandData.start;
                 const bandEndMHz = (bandData.displayUnit === 'kHz') ? bandData.end / 1000 : bandData.end;
-                
                 const isOutside = bandEndMHz < lowerLimit || bandStartMHz > upperLimit;
-                
                 button.classList.toggle('disabled-band', isOutside);
 
                 const parent = button.parentElement;
@@ -503,16 +513,13 @@
                 if (LAYOUT_STYLE === 'modern' && isOutside && !isAlreadyWrapped) {
                     const tooltipWrapper = document.createElement('div');
                     tooltipWrapper.className = 'bs-tooltip'; 
-
                     const tooltipText = document.createElement('span');
                     tooltipText.className = 'bs-tooltiptext';
                     tooltipText.id = `tooltip-band-${key}`;
                     tooltipText.textContent = 'This band is outside the server tuning limit.';
-
                     button.parentNode.insertBefore(tooltipWrapper, button);
                     tooltipWrapper.appendChild(button);
                     tooltipWrapper.appendChild(tooltipText);
-
                 } else if (LAYOUT_STYLE === 'modern' && !isOutside && isAlreadyWrapped) {
                     const grandParent = parent.parentNode;
                     grandParent.insertBefore(button, parent);
@@ -543,7 +550,8 @@
         
         const updateView = (activeBandKey) => { 
             if (HIDE_ALL_BUTTONS) return;
-            const isAmView = amBandKeys.includes(activeBandKey); 
+            const freqForAmCheck = getCurrentFrequencyInMHz();
+            const isAmView = (freqForAmCheck >= ALL_BANDS.AM_SUPER.start && freqForAmCheck <= ALL_BANDS.AM_SUPER.end);
             rtContainer.style.display = isAmView ? 'none' : 'block'; 
             amBandsViewContainer.style.display = isAmView ? 'grid' : 'none'; 
         };
@@ -558,7 +566,7 @@
 
         updateVisualsByFrequency = (freqInMHz) => {
             let currentMainKey = null, currentSwKey = null;
-            for (const key in ALL_BANDS) { if (ENABLED_BANDS.includes(key) && freqInMHz >= ALL_BANDS[key].start && freqInMHz <= ALL_BANDS[key].end) { currentMainKey = key; break; } }
+            for (const key in ALL_BANDS) { if (key !== 'AM_SUPER' && ENABLED_BANDS.includes(key) && freqInMHz >= ALL_BANDS[key].start && freqInMHz <= ALL_BANDS[key].end) { currentMainKey = key; break; } }
             if (currentMainKey === 'SW') {
                 for (const key in SW_BANDS) { if (freqInMHz >= SW_BANDS[key].start && freqInMHz <= SW_BANDS[key].end) { currentSwKey = key; break; } }
             }
@@ -661,7 +669,7 @@
                 amBandsViewContainer.appendChild(swFieldset);
             }
             const bandFieldset = document.createElement('fieldset'); bandFieldset.className = 'band-fieldset';
-            const bandLegend = document.createElement('legend'); bandLegend.textContent = 'Band'; bandFieldset.appendChild(bandLegend);
+            const bandLegend = document.createElement('legend'); bandLegend.textContent = 'AM Band'; bandFieldset.appendChild(bandLegend);
             const bandButtonContainer = document.createElement('div'); bandButtonContainer.className = 'band-button-container'; bandFieldset.appendChild(bandButtonContainer);
             if (ENABLED_BANDS.includes('SW')) {
                 const fullSwButton = createBandButton('SW', { ...ALL_BANDS['SW'], displayName: 'SW' }, 'am-view-button');
@@ -1038,14 +1046,6 @@
         }
     }
 
-    const loadPluginStylesheet = () => {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.type = 'text/css';
-      link.href = '/public/Enhanced_Tuning.css';
-      document.head.appendChild(link);
-    };
-
     const setBodyClasses = () => {
       const body = document.body;
       
@@ -1069,8 +1069,7 @@
         body.classList.add('modern-buttons-visible');
       }
     };
-
-    loadPluginStylesheet();
+    
     setBodyClasses();
 
     observer = new MutationObserver(() => {
@@ -1100,17 +1099,118 @@
       if(typeof updateBandButtonStates === 'function') updateBandButtonStates();
     }, 500);
 
-    console.log(`Enhanced Tuning v2.06.0 loaded.`);
+    if (typeof ENABLE_MW_STEP_TOGGLE !== 'undefined' && ENABLE_MW_STEP_TOGGLE) {
+      
+      const MW_STEP_STORAGE_KEY = 'mwStepPreference';
+      
+      const MW_BAND_AMERICAS = { name: 'MW', tune: 1.000, start: 0.530, end: 1.700, displayUnit: 'kHz' };
+      const MW_BAND_INTERNATIONAL = { name: 'MW', tune: 0.999, start: 0.504, end: 1.701, displayUnit: 'kHz' };
+
+      let is10kHzStep = localStorage.getItem(MW_STEP_STORAGE_KEY)
+        ? localStorage.getItem(MW_STEP_STORAGE_KEY) === 'true'
+        : (typeof TUNING_STANDARD !== 'undefined' && TUNING_STANDARD === 'americas');
+
+      const mwStepButton = document.createElement("button");
+      mwStepButton.id = 'mw-step-toggle-button';
+      mwStepButton.textContent = is10kHzStep ? '10 kHz' : '9 kHz';
+      mwStepButton.title = 'Toggle MW tuning step';
+      
+      const updateButtonStyle = () => {
+        mwStepButton.classList.toggle('active', is10kHzStep);
+      };
+
+      mwStepButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        
+        const originalFreq = getCurrentFrequencyInMHz();
+
+        is10kHzStep = !is10kHzStep;
+        mwStepButton.textContent = is10kHzStep ? '10 kHz' : '9 kHz';
+        localStorage.setItem(MW_STEP_STORAGE_KEY, is10kHzStep);
+        updateButtonStyle();
+
+        ALL_BANDS.MW = is10kHzStep ? MW_BAND_AMERICAS : MW_BAND_INTERNATIONAL;
+        const newBand = ALL_BANDS.MW;
+
+        const newStep = is10kHzStep ? 0.010 : 0.009;
+        let targetFreq = Math.round(originalFreq / newStep) * newStep;
+        targetFreq = Math.max(newBand.start, Math.min(newBand.end, targetFreq));
+        
+        if (Math.abs(targetFreq - originalFreq) > 0.0001) {
+            tuneToFrequency(targetFreq.toFixed(3));
+        }
+        
+        updateVisualsByFrequency(targetFreq);
+      });
+      
+      freqContainer.appendChild(mwStepButton);
+      updateButtonStyle();
+
+      const originalUpdateVisuals = updateVisualsByFrequency;
+      updateVisualsByFrequency = (freqInMHz) => {
+        originalUpdateVisuals(freqInMHz);
+        const isMwBandActive = (ALL_BANDS.MW && freqInMHz >= ALL_BANDS.MW.start && freqInMHz <= ALL_BANDS.MW.end);
+        mwStepButton.style.display = isMwBandActive ? 'block' : 'none';
+      };
+
+      const originalTuneHandler = tuneEventHandler;
+      tuneEventHandler = (event, direction) => {
+        const currentFreq = getCurrentFrequencyInMHz();
+        const isMwBand = (ALL_BANDS.MW && currentFreq >= ALL_BANDS.MW.start && currentFreq <= ALL_BANDS.MW.end);
+
+        if (isMwBand) {
+          if (SHOW_LOOP_BUTTON && loopEnabled) {
+              const tolerance = 0.0001;
+              let looped = false;
+              if (direction === 'up' && currentFreq >= ALL_BANDS.MW.end - tolerance) {
+                  tuneToFrequency(ALL_BANDS.MW.start);
+                  looped = true;
+              } else if (direction === 'down' && currentFreq <= ALL_BANDS.MW.start + tolerance) {
+                  tuneToFrequency(ALL_BANDS.MW.end);
+                  looped = true;
+              }
+              if (looped) {
+                  event.preventDefault();
+                  event.stopImmediatePropagation();
+                  return;
+              }
+          }
+
+          if (!handleCustomStepTune(direction)) {
+            const step = is10kHzStep ? 0.010 : 0.009;
+            const directionMultiplier = (direction === 'up' ? 1 : -1);
+            
+            let newFreq = Math.round((currentFreq + (step * directionMultiplier)) / step) * step;
+            
+            if (SHOW_LOOP_BUTTON && loopEnabled) {
+                newFreq = Math.max(ALL_BANDS.MW.start, Math.min(ALL_BANDS.MW.end, newFreq));
+            }
+
+            tuneToFrequency(newFreq.toFixed(3));
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return;
+          }
+        }
+        
+        originalTuneHandler(event, direction);
+      };
+    }
+
+    console.log(`Enhanced Tuning v2.06.1 loaded.`);
   };
 
-
   document.addEventListener("DOMContentLoaded", () => {
-    loadScript('/public/config.js')
+    loadScript('/public/config.ini')
+      .then(() => {
+        return loadPluginStylesheet();
+      })
       .then(() => {
         initializePlugin();
       })
       .catch(error => {
-        console.error("BandSelector Error: Could not load config.js. Plugin will not run.", error);
+        console.error("BandSelector Error: Could not load dependencies. Plugin will not run.", error);
       });
   });
 })();
