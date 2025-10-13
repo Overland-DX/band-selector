@@ -3,7 +3,7 @@ var pluginConfig = {
     name: 'Enhanced Tuning',
     version: '2.06.0',
     author: 'ODX',
-    frontEndPath: 'EnhancedTuning/Enhanced_Tuning_main.js'
+    frontEndPath: 'EnhancedTuning/Enhanced_Tuning_Main.js'
 }
 
 // Backend (server) changes can go here...
