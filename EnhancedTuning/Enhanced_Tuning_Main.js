@@ -1,9 +1,9 @@
-// Enhanced Tuning V2.06.1 – A plugin to switch bands and modify AM bandwidth options
+// Enhanced Tuning V2.06.2 – A plugin to switch bands and modify AM bandwidth options
 // -------------------------------------------------------------------------------------
 // Settings have been moved to /public/config.js
 // -------------------------------------------------------------------------------------
 
-/* global document, socket, WebSocket, LAYOUT_STYLE, HIDE_ALL_BUTTONS, SHOW_LOOP_BUTTON, SHOW_BAND_RANGE, ENABLE_TUNE_STEP_FEATURE, TUNE_STEP_TIMEOUT_SECONDS, TUNING_STANDARD, ENABLE_AM_BW, FIRMWARE_TYPE, ENABLE_DEFAULT_AM_BW, DEFAULT_AM_BW_VALUE, ENABLED_BANDS, ENABLE_FREQUENCY_MEMORY, ENABLE_MW_STEP_TOGGLE */
+/* global document, socket, WebSocket, LAYOUT_STYLE, HIDE_ALL_BUTTONS, SHOW_LOOP_BUTTON, SHOW_BAND_RANGE, ENABLE_TUNE_STEP_FEATURE, TUNE_STEP_TIMEOUT_SECONDS, TUNING_STANDARD, ENABLE_AM_BW, FIRMWARE_TYPE, ENABLE_DEFAULT_AM_BW, DEFAULT_AM_BW_VALUE, ENABLED_BANDS, ENABLE_FREQUENCY_MEMORY, ENABLE_MW_STEP_TOGGLE, GRADIENT_BUTTONS */
 (() => {
 
   const loadScript = (src) => {
@@ -30,7 +30,72 @@
     });
   };
 
+  const checkForGradientPluginAndApplyStyles = () => {
+    let attempts = 0;
+    const maxAttempts = 40;
+    const isGradientPluginActive = () => {
+      for (const sheet of document.styleSheets) {
+        try {
+          for (const rule of sheet.cssRules) {
+            if (rule.selectorText && rule.selectorText.includes('.playbutton') && rule.style.backgroundImage) {
+              if (rule.style.backgroundImage.includes('linear-gradient')) {
+                return true;
+              }
+            }
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+      return false;
+    };
+
+    const styleCheckInterval = setInterval(() => {
+      attempts++;
+      
+      if (isGradientPluginActive()) {
+        clearInterval(styleCheckInterval);
+        console.log('[Enhanced Tuning] Gradient plugin detected via CSS rules. Applying compatible styles.');
+        
+        const styleElement = document.createElement('style');
+        styleElement.textContent = `
+          .band-selector-button,
+          .am-view-button,
+          .sw-grid-button,
+          .loop-toggle-button {
+            background-image: linear-gradient(var(--color-4), var(--color-3));
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            background-color: transparent;
+            opacity: 0.6;
+          }
+          .band-selector-button.active-band,
+          .am-view-button.active-band,
+          .sw-grid-button.active-band,
+          .loop-toggle-button.active {
+            opacity: 1;
+          }
+          .band-selector-button:hover,
+          .am-view-button:hover,
+          .sw-grid-button:hover,
+          .loop-toggle-button:hover {
+            background-image: linear-gradient(var(--color-3), var(--color-5));
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+            transform: translateY(0.1px);
+            opacity: 1;
+          }
+        `;
+        document.head.appendChild(styleElement);
+        
+      } else if (attempts >= maxAttempts) {
+        clearInterval(styleCheckInterval);
+        console.log('[Enhanced Tuning] Gradient plugin not detected after timeout.');
+      }
+    }, 250);
+  };
+
   const initializePlugin = () => {
+	checkForGradientPluginAndApplyStyles();
     if (!ENABLE_AM_BW && (typeof console !== 'undefined')) {
       if (ENABLE_DEFAULT_AM_BW) {
         console.warn('[BandSelector] ENABLE_DEFAULT_AM_BW is set but ENABLE_AM_BW is false; default BW selection will be ignored.');
@@ -387,21 +452,71 @@
                 if (currentTuneStepIndex === -1) return false;
                 const currentFreq = getCurrentFrequencyInMHz();
                 if (isNaN(currentFreq)) return true;
-                const stepSize = TUNE_STEP_CONFIG[currentTuneStepIndex].step;
-                const newFreq = (direction === 'up') ? currentFreq + stepSize : currentFreq - stepSize;
-                tuneToFrequency(newFreq);
+
+                let newFreq;
+                const isFmBand = (currentFreq >= 64.0);
+                const directionMultiplier = (direction === 'up' ? 1 : -1);
+
+                if (isFmBand) {
+                    let stepSize = TUNE_STEP_CONFIG[currentTuneStepIndex].step;
+
+                    if (currentTuneStepIndex === 2) {
+                        if (typeof TUNING_STANDARD !== 'undefined' && TUNING_STANDARD.toLowerCase() === 'americas') {
+                            stepSize = 0.200;
+                        } else {
+                            stepSize = 0.100;
+                        }
+                        
+                        newFreq = currentFreq + (stepSize * directionMultiplier);
+                        
+                        newFreq = Math.round(newFreq * 10) / 10;
+
+                    } else {
+                        newFreq = currentFreq + (stepSize * directionMultiplier);
+                    }
+
+                } else {
+                    const stepSize = TUNE_STEP_CONFIG[currentTuneStepIndex].step;
+                    newFreq = currentFreq + (stepSize * directionMultiplier);
+                    
+                    if (currentTuneStepIndex === 1) {
+                        let bandStep = 0.005; // SW
+
+                        if (newFreq >= ALL_BANDS['MW'].start && newFreq <= ALL_BANDS['MW'].end) {
+                            const isAmericasTuning = (typeof TUNING_STANDARD !== 'undefined' && TUNING_STANDARD === 'americas');
+                            const storedPref = localStorage.getItem('mwStepPreference');
+                            const is10kHzStep = storedPref ? (storedPref === 'true') : isAmericasTuning;
+                            bandStep = is10kHzStep ? 0.010 : 0.009;
+                        } else if (newFreq >= ALL_BANDS['LW'].start && newFreq <= ALL_BANDS['LW'].end) {
+                            bandStep = 0.009; // LW
+                        }
+                        
+                        newFreq = Math.round(newFreq / bandStep) * bandStep;
+                    }
+                }
+
+                tuneToFrequency(newFreq.toFixed(3));
                 startResetTimer();
                 return true;
             };
 
             freqContainer.addEventListener('click', (e) => {
                 if (e.target.closest('#mw-step-toggle-button, .loop-toggle-button, #band-range-container, .band-selector-button')) return;
-				e.preventDefault();
-				e.stopImmediatePropagation();
+                e.preventDefault();
+                e.stopImmediatePropagation();
+
                 currentTuneStepIndex++;
+                
                 const freqInMHz = getCurrentFrequencyInMHz();
-                if (currentTuneStepIndex === 0 && freqInMHz >= 64.0) currentTuneStepIndex = 1;
-                if (currentTuneStepIndex >= TUNE_STEP_CONFIG.length) currentTuneStepIndex = -1;
+                const isFmBand = (freqInMHz >= 64.0);
+                if (isFmBand && currentTuneStepIndex === 0) {
+                    currentTuneStepIndex = 1;
+                }
+
+                if (currentTuneStepIndex >= TUNE_STEP_CONFIG.length) {
+                    currentTuneStepIndex = -1;
+                }
+                
                 updateFrequencyDisplayWithMarker();
                 startResetTimer();
             });
@@ -1198,7 +1313,7 @@
       };
     }
 
-    console.log(`Enhanced Tuning v2.06.1 loaded.`);
+    console.log(`Enhanced Tuning v2.06.2 loaded.`);
   };
 
   document.addEventListener("DOMContentLoaded", () => {
